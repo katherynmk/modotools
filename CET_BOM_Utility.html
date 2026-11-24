@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CET BOM Utility - Modoroll MODO-MARKET</title>
+
+  <!-- SheetJS for xlsx read/write -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+    /* ── Header ── */
+    .header-wrap {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 9999;
+      display: grid;
+      grid-template-rows: auto 44px;
+      background: transparent;
+    }
+    .logo-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #fff;
+      padding: 10px 16px;
+      border-bottom: 1px solid #eee;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,.04));
+    }
+    .logo-bar img {
+      height: 72px;
+      width: auto;
+      max-width: min(100%, 920px);
+    }
+    .nav-bar {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .nav-bar a {
+      display: inline-block;
+      padding: 10px 6px;
+      font-weight: 600;
+      text-decoration: none;
+      color: inherit;
+    }
+    .nav-bar a:hover { border-bottom: 2px solid #1ad51d; }
+    .nav-bar a.active { color: #006600; border-bottom: 2px solid #1ad51d; }
+
+    main { padding-top: 132px; }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      min-height: 15vh;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: #fff;
+      overflow: clip;
+    }
+    .hero::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: url("img/formicbg.png");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: -2;
+      transform: translateZ(0);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,.3));
+      z-index: -1;
+    }
+    .hero-inner {
+      width: min(92vw, 1200px);
+      padding: 48px 16px;
+    }
+    .hero h1 {
+      font-size: 2rem;
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .hero p { font-size: 1rem; opacity: 0.9; }
+
+    /* ── Panels ── */
+    .panel-wrap {
+      width: min(96vw, 1400px);
+      margin: 0 auto;
+      padding: 24px 0 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 24px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+
+    .panel h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #006600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Drop Zone ── */
+    #dropzone {
+      border: 2.5px dashed #bbb;
+      border-radius: 10px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      background: #fafafa;
+    }
+    #dropzone:hover, #dropzone.drag-over {
+      border-color: #1ad51d;
+      background: #f0fff0;
+    }
+    #dropzone .drop-icon { font-size: 2.4rem; margin-bottom: 10px; }
+    #dropzone .drop-title { font-size: 1.1rem; font-weight: 700; color: #333; }
+    #dropzone .drop-sub { font-size: 0.85rem; color: #888; margin-top: 4px; }
+    #file-input { display: none; }
+
+    /* ── Status bar ── */
+    #status-bar {
+      display: none;
+      margin-top: 14px;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+    #status-bar.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+    #status-bar.error   { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+
+    /* ── Output panel ── */
+    #output-panel { display: none; }
+
+    /* ── Toolbar ── */
+    .output-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Dropdown button ── */
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.12);
+      z-index: 100;
+      min-width: 210px;
+      overflow: hidden;
+    }
+    .dropdown-menu.open { display: block; }
+    .dropdown-menu button {
+      display: block;
+      width: 100%;
+      padding: 10px 16px;
+      text-align: left;
+      background: none;
+      border: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #333;
+    }
+    .dropdown-menu button:hover { background: #f0fff0; color: #006600; }
+    .dropdown-menu hr { border: none; border-top: 1px solid #eee; margin: 0; }
+
+    .btn {
+      padding: 8px 18px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-green  { background: #1ad51d; color: #fff; }
+    .btn-blue   { background: #1565c0; color: #fff; }
+    .btn-gray   { background: #757575; color: #fff; }
+
+    /* ── Toggle / checkbox ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #444;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #1ad51d; }
+
+    /* ── Summary metrics ── */
+    .metrics-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .metric-card {
+      background: #f0fff0;
+      border: 1px solid #a5d6a7;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 0.82rem;
+      color: #2e7d32;
+      font-weight: 600;
+    }
+    .metric-card .metric-val {
+      font-size: 1.3rem;
+      font-weight: 800;
+      display: block;
+      margin-top: 2px;
+      color: #1b5e20;
+    }
+
+    .summary-badge {
+      margin-left: auto;
+      font-size: 0.82rem;
+      color: #555;
+      font-weight: 600;
+    }
+    .summary-badge span {
+      display: inline-block;
+      background: #e8f5e9;
+      color: #2e7d32;
+      border-radius: 12px;
+      padding: 2px 10px;
+      margin-left: 6px;
+      font-weight: 700;
+    }
+
+    /* ── BOM Table ── */
+    .table-scroll {
+      overflow-x: auto;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+    }
+
+    table.bom-table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.82rem;
+    }
+    table.bom-table thead tr {
+      background: #1b5e20;
+      color: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    table.bom-table th {
+      padding: 9px 12px;
+      text-align: left;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    table.bom-table td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #f0f0f0;
+      white-space: nowrap;
+    }
+    table.bom-table tbody tr:hover { background: #f1f8e9; }
+    table.bom-table tbody tr:nth-child(even) { background: #fafafa; }
+    table.bom-table tbody tr:nth-child(even):hover { background: #f1f8e9; }
+
+    .qty-cell {
+      font-weight: 700;
+      color: #1b5e20;
+      text-align: right;
+    }
+
+    .elev-range {
+      font-size: 0.78rem;
+      color: #666;
+      font-style: italic;
+    }
+
+    /* Footer metadata row */
+    .meta-row td {
+      background: #f5f5f5 !important;
+      color: #777;
+      font-size: 0.78rem;
+      font-style: italic;
+      border-top: 2px solid #ddd;
+    }
+  
+  /* ── SHARED MODOROLL STYLE ── */
+  :root {
+    --green:      #2e7d32;
+    --green-dark: #1b5e20;
+    --green-lt:   #c8e6c9;
+    --accent:     #4caf50;
+  }
+  body {
+    background: #111 url("img/formicbg.png") center/cover fixed !important;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,40,0,0.72);
+    z-index: 0;
+    pointer-events: none;
+  }
+  /* ── HIDE OLD HEADER ── */
+  .header-wrap, header, .logo-bar, .nav-bar { display: none !important; }
+  /* ── NEW NAV ── */
+  nav.modoroll-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,30,10,0.96);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 8px 24px;
+  }
+  nav.modoroll-nav a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 2px;
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+  }
+  nav.modoroll-nav a:hover { color: #fff; }
+  nav.modoroll-nav a.active { color: var(--accent); border-color: var(--accent); }
+  /* ── LOGO BAR ── */
+  .modoroll-logo-bar {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 0 4px;
+  }
+  .modoroll-logo-bar img { height: 52px; }
+  /* ── HERO TIGHTEN ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 0 !important;
+  }
+  .hero-inner { padding: 16px !important; }
+  .hero::before, .hero::after { display: none !important; }
+  .hero h1 { text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+  /* ── CONTENT LAYERS ── */
+  .wrap, .page-wrap, main, .container { position: relative; z-index: 1; }
+  .panel { position: relative; z-index: 1; }
+  main { padding-top: 0 !important; }
+
+</style>
+</head>
+<body>
+<nav class="modoroll-nav">
+  <a href="BOM_Generator_Unified.html">Models</a>
+  <a href="Kit_Tools.html">Kits</a>
+  <a href="PartNumber_Tools.html">Parts</a>
+  <a href="Resources.html" class="active">Docs/Worksheets</a>
+  <a href="Calcs.html">Checks/Calcs</a>
+</nav>
+<div class="modoroll-logo-bar">
+  <a href="index.html"><img src="img/MRHeader.png" alt="MODOROLL"></a>
+</div><main>
+    <!-- ── Hero ── -->
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>CET BOM Utility</h1>
+        <p>Drag in a CET Configura BOM export — get a clean, deduplicated bill of materials instantly</p>
+      </div>
+    </section>
+
+    <div class="panel-wrap">
+
+      <!-- ── Pane 1: Drop Zone ── -->
+      <div class="panel">
+        <h2>📂 Load CET BOM File</h2>
+        <div id="dropzone"
+             onclick="document.getElementById('file-input').click()"
+             ondragover="onDragOver(event)"
+             ondragleave="onDragLeave(event)"
+             ondrop="onDrop(event)">
+          <div class="drop-icon">⬇️</div>
+          <div class="drop-title">Drag &amp; Drop a CET BOM (.xlsx) here</div>
+          <div class="drop-sub">or click to browse — processed entirely in your browser, nothing is uploaded</div>
+        </div>
+        <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(event)">
+        <div id="status-bar"></div>
+      </div>
+
+      <!-- ── Pane 2: Output ── -->
+      <div class="panel" id="output-panel">
+        <h2>📋 Condensed BOM Output</h2>
+
+        <!-- Toolbar -->
+        <div class="output-toolbar">
+
+          <!-- Download dropdown -->
+          <div class="dropdown" id="dl-dropdown">
+            <button class="btn btn-blue" onclick="toggleDropdown()">⬇ Download XLSX ▾</button>
+            <div class="dropdown-menu" id="dl-menu">
+              <button onclick="downloadXlsx('condensed')">⬇ Condensed BOM</button>
+              <button onclick="downloadXlsx('comprehensive')">⬇ Comprehensive BOM</button>
+            </div>
+          </div>
+
+          <button class="btn btn-green" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+          <button class="btn btn-gray" onclick="resetAll()">🔄 Load New File</button>
+
+          <!-- Comprehensive toggle -->
+          <label class="toggle-row" style="margin-left: 12px;">
+            <input type="checkbox" id="chk-comprehensive" onchange="renderTable()">
+            Show Comprehensive Output
+          </label>
+
+          <div class="summary-badge" id="summary-badge"></div>
+        </div>
+
+        <!-- System metrics -->
+        <div class="metrics-row" id="metrics-row"></div>
+
+        <!-- Table -->
+        <div class="table-scroll">
+          <table class="bom-table" id="bom-table">
+            <thead id="bom-thead"></thead>
+            <tbody id="bom-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+  // ═══════════════════════════════════════════════════════════════
+  //  STATE
+  // ═══════════════════════════════════════════════════════════════
+  let inputFileName   = '';
+  let allHeaders      = [];   // all raw header names (col A and qty col excluded)
+  let allColIndexMap  = [];   // maps allHeaders index → original col index
+  let condensedHeaders   = [];  // subset: omit Category; replace Elevation→Elevation Range, Height→Height Range
+  let condensedColMap    = [];  // maps condensedHeaders index → allHeaders index (-1=elev range, -2=height range)
+
+  // Two separate dedup result arrays:
+  //   condensedRows      — key excludes Height AND Elevation; tracks both as min/max ranges
+  //   comprehensiveRows  — key includes ALL columns (Height + Elevation included)
+  let condensedRows      = [];   // { cells, qty, elevMin, elevMax, heightMin, heightMax }
+  let comprehensiveRows  = [];   // { cells, qty }
+
+  // Column name constants (matched case-insensitively, index within allHeaders)
+  let COL_ELEVATION   = -1;
+  let COL_HEIGHT      = -1;
+  let COL_CATEGORY    = -1;
+  let COL_ZONE_LENGTH = -1;
+  let COL_ZONE_QTY    = -1;
+  let COL_ARC_ANGLE   = -1;
+  let COL_BF          = -1;
+  let COL_LENGTH      = -1;
+
+  // System-level metrics (computed from condensedRows)
+  let totalZones      = 0;
+  let totalLinearFt   = 0;
+  let totalDriveCards = 0;
+
+  // ═══════════════════════════════════════════════════════════════
+  //  DRAG & DROP
+  // ═══════════════════════════════════════════════════════════════
+  function onDragOver(e) {
+    e.preventDefault();
+    document.getElementById('dropzone').classList.add('drag-over');
+  }
+  function onDragLeave(e) {
+    document.getElementById('dropzone').classList.remove('drag-over');
+  }
+  function onDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropzone').classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  }
+  function handleFile(e) {
+    const file = e.target.files[0];
+    if (file) processFile(file);
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    const dd = document.getElementById('dl-dropdown');
+    if (dd && !dd.contains(e.target)) {
+      document.getElementById('dl-menu').classList.remove('open');
+    }
+  });
+  function toggleDropdown() {
+    document.getElementById('dl-menu').classList.toggle('open');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  FILE PROCESSING
+  // ═══════════════════════════════════════════════════════════════
+  function processFile(file) {
+    inputFileName = file.name;
+    setStatus('Reading file...', false);
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const wb   = XLSX.read(data, { type: 'array' });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const raw  = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+        if (!raw || raw.length < 2) {
+          setStatus('Error: File appears empty or unreadable.', true);
+          return;
+        }
+
+        // Row 1 = headers (index 0)
+        const rawHeaders = raw[0].map(h => h === null || h === undefined ? '' : String(h).trim());
+        const colCount   = rawHeaders.length;
+
+        // Filter data rows: col A must be a number
+        const dataRows = raw.slice(1).filter(row => {
+          const a = row[0];
+          return a !== null && a !== undefined && a !== '' && !isNaN(Number(a));
+        });
+
+        if (dataRows.length === 0) {
+          setStatus('Error: No numbered data rows found. Please check the file format.', true);
+          return;
+        }
+
+        // Identify Quantity column (last col named 'Quantity', or last col)
+        let qtyColIdx = -1;
+        for (let c = colCount - 1; c >= 0; c--) {
+          if (rawHeaders[c].toLowerCase() === 'quantity') { qtyColIdx = c; break; }
+        }
+        if (qtyColIdx === -1) qtyColIdx = colCount - 1;
+
+        // Find columns that have at least one non-null value in data rows
+        const colHasData = new Array(colCount).fill(false);
+        dataRows.forEach(row => {
+          for (let c = 0; c < colCount; c++) {
+            if (row[c] !== null && row[c] !== undefined && row[c] !== '') colHasData[c] = true;
+          }
+        });
+
+        // Build allHeaders / allColIndexMap: skip col A (0), skip qty col, skip empty cols
+        allColIndexMap = [];
+        allHeaders     = [];
+        for (let c = 0; c < colCount; c++) {
+          if (c === 0) continue;
+          if (c === qtyColIdx) continue;
+          if (!colHasData[c]) continue;
+          allColIndexMap.push(c);
+          allHeaders.push(rawHeaders[c] || `Col ${c + 1}`);
+        }
+
+        // Identify special column indices within allHeaders
+        COL_ELEVATION   = allHeaders.findIndex(h => h.toLowerCase() === 'elevation');
+        COL_HEIGHT      = allHeaders.findIndex(h => h.toLowerCase() === 'height');
+        COL_CATEGORY    = allHeaders.findIndex(h => h.toLowerCase() === 'category');
+        COL_ZONE_LENGTH = allHeaders.findIndex(h => h.toLowerCase() === 'zone length');
+        COL_ZONE_QTY    = allHeaders.findIndex(h => h.toLowerCase() === 'zone qty');
+        COL_ARC_ANGLE   = allHeaders.findIndex(h => h.toLowerCase() === 'arc angle');
+        COL_BF          = allHeaders.findIndex(h => h.toLowerCase() === 'bf');
+        COL_LENGTH      = allHeaders.findIndex(h => h.toLowerCase() === 'length');
+
+        // ── Helper: parse numeric value from a cell string ──
+        function parseCellNum(v) {
+          if (v === null || v === undefined || v === '') return null;
+          const n = parseFloat(String(v).replace(/['"°]/g, '').trim());
+          return isNaN(n) ? null : n;
+        }
+
+        // ── Build COMPREHENSIVE dedup map ──
+        // Key = ALL visible columns (including Height and Elevation)
+        // Items at different heights or elevations remain as separate rows
+        const compMap = new Map();
+        dataRows.forEach(row => {
+          const cells = allColIndexMap.map(c => {
+            const v = row[c];
+            return (v === null || v === undefined) ? '' : String(v).trim();
+          });
+          const key = cells.join('\x00');
+          const rowQty = Number(row[qtyColIdx]) || 1;
+          if (compMap.has(key)) {
+            compMap.get(key).qty += rowQty;
+          } else {
+            compMap.set(key, { cells: cells.slice(), qty: rowQty });
+          }
+        });
+        comprehensiveRows = Array.from(compMap.values());
+
+        // ── Build CONDENSED dedup map ──
+        // Key = all visible columns EXCEPT Height and Elevation
+        // Height and Elevation are tracked as min/max ranges
+        const condMap = new Map();
+        dataRows.forEach(row => {
+          const cells = allColIndexMap.map(c => {
+            const v = row[c];
+            return (v === null || v === undefined) ? '' : String(v).trim();
+          });
+          const keyParts = cells.filter((_, i) => i !== COL_ELEVATION && i !== COL_HEIGHT);
+          const key = keyParts.join('\x00');
+          const rowQty = Number(row[qtyColIdx]) || 1;
+          const elevVal  = COL_ELEVATION >= 0 ? parseCellNum(cells[COL_ELEVATION])  : null;
+          const heightVal = COL_HEIGHT   >= 0 ? parseCellNum(cells[COL_HEIGHT])     : null;
+          if (condMap.has(key)) {
+            const entry = condMap.get(key);
+            entry.qty += rowQty;
+            if (elevVal  !== null) { if (elevVal  < entry.elevMin)   entry.elevMin   = elevVal;   if (elevVal  > entry.elevMax)   entry.elevMax   = elevVal;   }
+            if (heightVal !== null) { if (heightVal < entry.heightMin) entry.heightMin = heightVal; if (heightVal > entry.heightMax) entry.heightMax = heightVal; }
+          } else {
+            condMap.set(key, {
+              cells: cells.slice(),
+              qty: rowQty,
+              elevMin:   elevVal   !== null ? elevVal   : null,
+              elevMax:   elevVal   !== null ? elevVal   : null,
+              heightMin: heightVal !== null ? heightVal : null,
+              heightMax: heightVal !== null ? heightVal : null
+            });
+          }
+        });
+        condensedRows = Array.from(condMap.values());
+
+        // ── Build condensed column map ──
+        // Condensed omits: Category; replaces Elevation→Elevation Range, Height→Height Range
+        condensedColMap  = [];
+        condensedHeaders = [];
+        allHeaders.forEach((h, i) => {
+          const hl = h.toLowerCase();
+          if (hl === 'category') return;
+          if (hl === 'elevation') {
+            condensedColMap.push(-1);   // sentinel: -1 = elevation range
+            condensedHeaders.push('Elevation Range');
+          } else if (hl === 'height') {
+            condensedColMap.push(-2);   // sentinel: -2 = height range
+            condensedHeaders.push('Height Range');
+          } else {
+            condensedColMap.push(i);
+            condensedHeaders.push(h);
+          }
+        });
+
+        // ── System metrics ──
+        computeMetrics();
+
+        // ── Render ──
+        renderTable();
+        renderMetrics();
+
+        setStatus(
+          `✓ Parsed "${inputFileName}" — ${dataRows.length.toLocaleString()} input rows → ${condensedRows.length} condensed / ${comprehensiveRows.length} comprehensive unique line items`,
+          false
+        );
+        document.getElementById('output-panel').style.display = 'block';
+        document.getElementById('output-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      } catch (err) {
+        setStatus('Error parsing file: ' + err.message, true);
+        console.error(err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  METRICS CALCULATION
+  // ═══════════════════════════════════════════════════════════════
+  function parseInches(str) {
+    // Accepts "30"", "30", 30, etc. Returns number in inches or null
+    if (str === null || str === undefined || str === '') return null;
+    const s = String(str).replace(/['"]/g, '').trim();
+    const n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  }
+
+  function computeMetrics() {
+    totalZones      = 0;
+    totalLinearFt   = 0;
+    totalDriveCards = 0;
+
+    condensedRows.forEach(row => {
+      const qty = row.qty;
+
+      // Determine if this is a curve
+      let arcAngle = null;
+      if (COL_ARC_ANGLE >= 0) {
+        const av = row.cells[COL_ARC_ANGLE];
+        if (av && av !== '') {
+          const parsed = parseFloat(String(av).replace(/[°deg]/gi, '').trim());
+          if (!isNaN(parsed)) arcAngle = parsed;
+        }
+      }
+
+      const isCurve = arcAngle !== null && arcAngle > 0;
+
+      if (isCurve) {
+        // Curves: assume 30" zone length
+        // 90° → 2 zones, all others → 1 zone
+        const zonesPerUnit = (Math.abs(arcAngle - 90) < 1) ? 2 : 1;
+        totalZones += zonesPerUnit * qty;
+        totalDriveCards += Math.ceil(zonesPerUnit / 2) * qty;
+
+        // Linear feet: curve_length = (2 * π * (36 + BF/2)) / (360 / arcAngle)
+        let bfIn = 27; // default BF if not found
+        if (COL_BF >= 0) {
+          const bv = parseInches(row.cells[COL_BF]);
+          if (bv !== null) bfIn = bv;
+        }
+        const curveLen = (2 * Math.PI * (36 + bfIn / 2)) / (360 / arcAngle);
+        totalLinearFt += (curveLen / 12) * qty;
+
+      } else {
+        // Straight / gravity / other
+        let zoneLen = null;
+        let zoneQty = null;
+
+        if (COL_ZONE_LENGTH >= 0) {
+          zoneLen = parseInches(row.cells[COL_ZONE_LENGTH]);
+        }
+        if (COL_ZONE_QTY >= 0) {
+          const zq = row.cells[COL_ZONE_QTY];
+          if (zq !== null && zq !== '') {
+            const parsed = parseFloat(String(zq));
+            if (!isNaN(parsed)) zoneQty = parsed;
+          }
+        }
+
+        if (zoneLen !== null && zoneQty !== null) {
+          // Normal straight with zone data
+          totalZones      += zoneQty * qty;
+          totalLinearFt   += (zoneLen * zoneQty / 12) * qty;
+          totalDriveCards += Math.ceil(zoneQty / 2) * qty;
+        } else if (zoneLen !== null && zoneQty === null) {
+          // Zone length known but no zone qty — assume 1 zone
+          totalZones      += 1 * qty;
+          totalLinearFt   += (zoneLen / 12) * qty;
+          totalDriveCards += 1 * qty;
+        } else {
+          // No zone data — if Length present, assume 1 zone = length
+          let lenIn = null;
+          if (COL_LENGTH >= 0) {
+            lenIn = parseInches(row.cells[COL_LENGTH]);
+          }
+          if (lenIn !== null) {
+            totalZones      += 1 * qty;
+            totalLinearFt   += (lenIn / 12) * qty;
+            totalDriveCards += 1 * qty;
+          }
+          // else: no data to compute — skip
+        }
+      }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  RENDER METRICS
+  // ═══════════════════════════════════════════════════════════════
+  function renderMetrics() {
+    const row = document.getElementById('metrics-row');
+    row.innerHTML = `
+      <div class="metric-card">
+        Total Zones
+        <span class="metric-val">${totalZones.toLocaleString()}</span>
+      </div>
+      <div class="metric-card">
+        Total Linear Feet
+        <span class="metric-val">${totalLinearFt.toFixed(1)} ft</span>
+      </div>
+      <div class="metric-card">
+        Total Drive Cards
+        <span class="metric-val">${totalDriveCards.toLocaleString()}</span>
+      </div>
+      <div class="metric-card">
+        Unique Lines (Condensed)
+        <span class="metric-val">${condensedRows.length.toLocaleString()}</span>
+      </div>
+    `;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  RENDER TABLE
+  // ═══════════════════════════════════════════════════════════════
+  function renderTable() {
+    const comprehensive = document.getElementById('chk-comprehensive').checked;
+    const thead = document.getElementById('bom-thead');
+    const tbody = document.getElementById('bom-tbody');
+    const badge = document.getElementById('summary-badge');
+
+    const headers = comprehensive ? allHeaders : condensedHeaders;
+    const colMap  = comprehensive ? allHeaders.map((_, i) => i) : condensedColMap;
+    const rows    = comprehensive ? comprehensiveRows : condensedRows;
+
+    // ── Header row ──
+    thead.innerHTML = '';
+    const htr = document.createElement('tr');
+    const thNum = document.createElement('th');
+    thNum.textContent = '#';
+    htr.appendChild(thNum);
+    headers.forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      htr.appendChild(th);
+    });
+    const thQty = document.createElement('th');
+    thQty.textContent = 'Quantity';
+    thQty.style.textAlign = 'right';
+    htr.appendChild(thQty);
+    thead.appendChild(htr);
+
+    // ── Body rows ──
+    tbody.innerHTML = '';
+    let totalQty = 0;
+
+    rows.forEach((row, i) => {
+      totalQty += row.qty;
+      const tr = document.createElement('tr');
+
+      // Row number
+      const tdNum = document.createElement('td');
+      tdNum.textContent = i + 1;
+      tdNum.style.color = '#999';
+      tdNum.style.fontSize = '0.78rem';
+      tr.appendChild(tdNum);
+
+      // Data cells
+      colMap.forEach((allIdx, ci) => {
+        const td = document.createElement('td');
+
+        if (allIdx === -1) {
+          // Condensed: Elevation Range
+          if (row.elevMin !== null && row.elevMax !== null) {
+            if (Math.abs(row.elevMax - row.elevMin) < 0.01) {
+              td.textContent = `${row.elevMin}"`;
+            } else {
+              td.innerHTML = `<span class="elev-range">${row.elevMin}" – ${row.elevMax}"</span>`;
+            }
+          } else {
+            td.textContent = '—';
+          }
+        } else if (allIdx === -2) {
+          // Condensed: Height Range
+          if (row.heightMin !== null && row.heightMax !== null) {
+            if (Math.abs(row.heightMax - row.heightMin) < 0.01) {
+              td.textContent = `${row.heightMin}"`;
+            } else {
+              td.innerHTML = `<span class="elev-range">${row.heightMin}" – ${row.heightMax}"</span>`;
+            }
+          } else {
+            td.textContent = '—';
+          }
+        } else {
+          const val = row.cells[allIdx];
+          // Category column gets a pill (comprehensive only)
+          if (comprehensive && allIdx === COL_CATEGORY && val) {
+            const pill = document.createElement('span');
+            const lc = val.toLowerCase();
+            pill.className = 'cat-pill ' + (lc.includes('modoroll') ? 'modoroll' : 'cet');
+            pill.textContent = val;
+            td.appendChild(pill);
+          } else {
+            td.textContent = val || '';
+          }
+        }
+        tr.appendChild(td);
+      });
+
+      // Quantity
+      const tdQty = document.createElement('td');
+      tdQty.className = 'qty-cell';
+      tdQty.textContent = row.qty.toLocaleString();
+      tr.appendChild(tdQty);
+
+      tbody.appendChild(tr);
+    });
+
+    // Metadata footer row
+    const now = new Date();
+    const ts  = formatTimestamp(now);
+    const metaTr = document.createElement('tr');
+    metaTr.className = 'meta-row';
+    const metaTd = document.createElement('td');
+    metaTd.colSpan = headers.length + 2;
+    metaTd.textContent = `Source: ${inputFileName}   |   Generated: ${ts}`;
+    metaTr.appendChild(metaTd);
+    tbody.appendChild(metaTr);
+
+    // Summary badge
+    badge.innerHTML = comprehensive
+      ? `Comprehensive: <span>${rows.length.toLocaleString()} unique lines</span>`
+      : `Condensed: <span>${rows.length.toLocaleString()} unique lines</span>`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  EXPORT — DOWNLOAD XLSX
+  // ═══════════════════════════════════════════════════════════════
+  function downloadXlsx(mode) {
+    document.getElementById('dl-menu').classList.remove('open');
+    const isComp = (mode === 'comprehensive');
+    const rows   = isComp ? comprehensiveRows : condensedRows;
+    if (!rows.length) return;
+
+    const headers = isComp ? allHeaders : condensedHeaders;
+    const colMap  = isComp ? allHeaders.map((_, i) => i) : condensedColMap;
+
+    const now    = new Date();
+    const ts     = formatTimestamp(now);
+    const tsFile = formatTimestampFile(now);
+
+    const aoa = [];
+
+    // Header row
+    aoa.push(['#', ...headers, 'Quantity']);
+
+    // Data rows
+    rows.forEach((row, i) => {
+      const cells = colMap.map(allIdx => {
+        if (allIdx === -1) {
+          // Elevation Range
+          if (row.elevMin !== null && row.elevMax !== null) {
+            return Math.abs(row.elevMax - row.elevMin) < 0.01
+              ? `${row.elevMin}"`
+              : `${row.elevMin}" – ${row.elevMax}"`;
+          }
+          return '';
+        }
+        if (allIdx === -2) {
+          // Height Range
+          if (row.heightMin !== null && row.heightMax !== null) {
+            return Math.abs(row.heightMax - row.heightMin) < 0.01
+              ? `${row.heightMin}"`
+              : `${row.heightMin}" – ${row.heightMax}"`;
+          }
+          return '';
+        }
+        return row.cells[allIdx] || '';
+      });
+      aoa.push([i + 1, ...cells, row.qty]);
+    });
+
+    // Metadata
+    aoa.push([]);
+    aoa.push([`Source: ${inputFileName}   |   Generated: ${ts}`]);
+
+    // System metrics (condensed only)
+    if (!isComp) {
+      aoa.push([`Total Zones: ${totalZones}   |   Total Linear Feet: ${totalLinearFt.toFixed(1)} ft   |   Total Drive Cards: ${totalDriveCards}`]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    const sheetName = isComp ? 'Comprehensive BOM' : 'Condensed BOM';
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+    // Auto column widths
+    const colWidths = headers.map((h, i) => {
+      const maxLen = Math.max(
+        h.length,
+        ...rows.map(r => {
+          const ci = colMap[i];
+          if (ci === -1 || ci === -2) return 20;
+          return String(r.cells[ci] || '').length;
+        })
+      );
+      return { wch: Math.min(maxLen + 2, 50) };
+    });
+    ws['!cols'] = [{ wch: 5 }, ...colWidths, { wch: 10 }];
+
+    const suffix = isComp ? '_comprehensive' : '_condensed';
+    const baseName = inputFileName.replace(/\.[^/.]+$/, '');
+    XLSX.writeFile(wb, `${baseName}${suffix}_${tsFile}.xlsx`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  EXPORT — COPY TO CLIPBOARD
+  // ═══════════════════════════════════════════════════════════════
+  function copyToClipboard() {
+    const isComp = document.getElementById('chk-comprehensive').checked;
+    const rows   = isComp ? comprehensiveRows : condensedRows;
+    if (!rows.length) return;
+
+    const headers = isComp ? allHeaders : condensedHeaders;
+    const colMap  = isComp ? allHeaders.map((_, i) => i) : condensedColMap;
+
+    const now = new Date();
+    const ts  = formatTimestamp(now);
+
+    const lines = [];
+    lines.push(['#', ...headers, 'Quantity'].join('\t'));
+
+    rows.forEach((row, i) => {
+      const cells = colMap.map(allIdx => {
+        if (allIdx === -1) {
+          if (row.elevMin !== null && row.elevMax !== null) {
+            return Math.abs(row.elevMax - row.elevMin) < 0.01
+              ? `${row.elevMin}"`
+              : `${row.elevMin}" – ${row.elevMax}"`;
+          }
+          return '';
+        }
+        if (allIdx === -2) {
+          if (row.heightMin !== null && row.heightMax !== null) {
+            return Math.abs(row.heightMax - row.heightMin) < 0.01
+              ? `${row.heightMin}"`
+              : `${row.heightMin}" – ${row.heightMax}"`;
+          }
+          return '';
+        }
+        return row.cells[allIdx] || '';
+      });
+      lines.push([i + 1, ...cells, row.qty].join('\t'));
+    });
+
+    lines.push('');
+    lines.push(`Source: ${inputFileName}\tGenerated: ${ts}`);
+    if (!isComp) {
+      lines.push(`Total Zones: ${totalZones}\tTotal Linear Feet: ${totalLinearFt.toFixed(1)} ft\tTotal Drive Cards: ${totalDriveCards}`);
+    }
+
+    const text = lines.join('\n');
+
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.querySelector('.btn-green');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.style.background = '#2e7d32';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.background = '';
+      }, 2000);
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  RESET
+  // ═══════════════════════════════════════════════════════════════
+  function resetAll() {
+    inputFileName   = '';
+    allHeaders      = [];
+    allColIndexMap  = [];
+    condensedHeaders   = [];
+    condensedColMap    = [];
+    condensedRows      = [];
+    comprehensiveRows  = [];
+    totalZones      = 0;
+    totalLinearFt   = 0;
+    totalDriveCards = 0;
+    COL_ELEVATION = COL_HEIGHT = COL_CATEGORY = COL_ZONE_LENGTH = COL_ZONE_QTY = COL_ARC_ANGLE = COL_BF = COL_LENGTH = -1;
+    document.getElementById('bom-thead').innerHTML = '';
+    document.getElementById('bom-tbody').innerHTML = '';
+    document.getElementById('metrics-row').innerHTML = '';
+    document.getElementById('output-panel').style.display = 'none';
+    document.getElementById('status-bar').style.display = 'none';
+    document.getElementById('file-input').value = '';
+    document.getElementById('chk-comprehensive').checked = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  HELPERS
+  // ═══════════════════════════════════════════════════════════════
+  function setStatus(msg, isError) {
+    const bar = document.getElementById('status-bar');
+    bar.textContent = msg;
+    bar.className   = isError ? 'error' : 'success';
+    bar.style.display = 'block';
+  }
+
+  function formatTimestamp(d) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ` +
+           `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+
+  function formatTimestampFile(d) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_` +
+           `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  }
+  </script>
+</body>
+</html>

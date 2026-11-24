@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MODO-MARKET — Home 1.01</title>
+  <meta name="description" content="Welcome to MODOROLL — Smart Conveyor & Robotics Systems." />
+  <link rel="icon" href="https://www.MODO-MARKET.com/favicon.ico" />
+  <style>
+    :root{
+      --m8-green:#1ad51d;
+      --page-bg:#006600;     /* site background tone */
+      --header-pad:132px;    /* reserved space for fixed header */
+      --hero-h:72vh;         /* home hero taller */
+      --overlay:rgba(0,0,0,.45);
+      --maxw:1200px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111;background:var(--page-bg)}
+    a{color:inherit;text-decoration:none}
+    main{padding-top:0}
+
+    /* Header */
+    .header-wrap{position:fixed;inset:0 0 auto 0;z-index:9999;display:grid;grid-template-rows:auto 44px;background:transparent}
+    .logo-bar{display:flex;justify-content:center;align-items:center;background:#fff;padding:10px 16px;border-bottom:1px solid #eee;filter:drop-shadow(0 4px 12px rgba(0,0,0,.04))}
+    .logo-bar img{height:72px;width:auto;max-width:min(100%,920px)}
+    .nav-bar{display:flex;gap:24px;align-items:center;justify-content:center;background:#fff;border-bottom:1px solid #eee;overflow-x:auto;white-space:nowrap}
+    .nav-bar a{display:inline-block;padding:10px 6px;font-weight:600}
+    .nav-bar a:hover{border-bottom:2px solid var(--m8-green)}
+    @media (max-width:640px){:root{--header-pad:118px}.logo-bar img{height:60px}.nav-bar{gap:14px}}
+
+    /* Hero */
+    .hero{position:relative;min-height:var(--hero-h);display:grid;place-items:center;text-align:center;color:#fff;overflow:clip}
+    .hero::before{content:"";position:fixed;inset:0;background-image:url("img/formicbg.png");background-size:cover;background-position:center;background-repeat:no-repeat;z-index:-2;transform:translateZ(0)}
+    .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,var(--overlay),rgba(0,0,0,.3));z-index:-1}
+    .hero-inner{width:min(92vw,var(--maxw));padding:64px 16px}
+    .hero h1{font-size:clamp(32px,6vw,64px);line-height:1.05;margin:0 0 12px;font-weight:800;letter-spacing:-.02em}
+    .hero p{font-size:clamp(16px,2.4vw,22px);opacity:.96;margin:0 0 20px}
+    .cta{display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center}
+    .btn{padding:12px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.25);color:#fff;text-decoration:none;font-weight:700;backdrop-filter:blur(2px)}
+    .btn.primary{background:var(--m8-green);border-color:transparent;color:#111}
+
+    @media (prefers-reduced-motion: reduce){.hero::before{position:absolute}}
+  
+  /* ── SHARED MODOROLL STYLE ── */
+  :root {
+    --green:      #2e7d32;
+    --green-dark: #1b5e20;
+    --green-lt:   #c8e6c9;
+    --accent:     #4caf50;
+  }
+  body {
+    background: #111 url("img/formicbg.png") center/cover fixed !important;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,40,0,0.72);
+    z-index: 0;
+    pointer-events: none;
+  }
+  /* ── HIDE OLD HEADER ── */
+  .header-wrap, header, .logo-bar, .nav-bar { display: none !important; }
+  /* ── NEW NAV ── */
+  nav.modoroll-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,30,10,0.96);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 8px 24px;
+  }
+  nav.modoroll-nav a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 2px;
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+  }
+  nav.modoroll-nav a:hover { color: #fff; }
+  nav.modoroll-nav a.active { color: var(--accent); border-color: var(--accent); }
+  /* ── HERO TIGHTEN ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 0 !important;
+  }
+  .hero-inner { padding: 16px !important; }
+  .hero::before, .hero::after { display: none !important; }
+  .hero h1 { text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+  /* ── CONTENT LAYERS ── */
+  .wrap, .page-wrap, main { position: relative; z-index: 1; }
+  .panel { position: relative; z-index: 1; }
+  main { padding-top: 0 !important; }
+
+  /* ── INDEX HERO ── */
+  .hero {
+    min-height: 55vh !important;
+  }
+  .hero-inner { padding: 48px 16px !important; }
+
+</style>
+</head>
+<body>
+<nav class="modoroll-nav">
+  <a href="BOM_Generator_Unified.html" class="active">Models</a>
+  <a href="Kit_Tools.html">Kits</a>
+  <a href="PartNumber_Tools.html">Parts</a>
+  <a href="Resources.html">Docs/Worksheets</a>
+  <a href="Calcs.html">Checks/Calcs</a>
+</nav>
+
+  <main>
+    <!-- Hero only (no additional body content) -->
+    <section class="hero" role="region" aria-label="Welcome hero">
+      <div class="hero-inner">
+        <h1>Welcome to MODO-MARKET</h1>
+        <p>A virtual toolbox for the Modoroll team</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

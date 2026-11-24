@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>MODOROLL — Model & Kit Generator</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- Master catalog (Sales Model lookup). Must sit in the same folder as this page. -->
+  <script src="catalog_data.js"></script>
+  <style>
+    :root {
+      --green: #2e7d32; --green-dark: #1b5e20; --accent: #4caf50;
+      --m8-green: #1ad51d; --maxw: 1280px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color: #000;
+           background: #111 url("img/formicbg.png") center/cover fixed; min-height: 100vh; }
+    body::before { content:''; position:fixed; inset:0; background:rgba(0,40,0,0.72); z-index:0; pointer-events:none; }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── NAV ── */
+    nav.modoroll-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,30,10,0.96); border-bottom: 2px solid var(--accent);
+      display: flex; align-items: center; justify-content: center; gap: 28px; padding: 8px 24px;
+    }
+    nav.modoroll-nav a { color:#ccc; text-decoration:none; font-size:13px; font-weight:500;
+      padding:4px 2px; border-bottom:2px solid transparent; transition:color .2s,border-color .2s; }
+    nav.modoroll-nav a:hover { color:#fff; }
+    nav.modoroll-nav a.active { color:var(--accent); border-color:var(--accent); }
+
+    /* ── HERO ── */
+    .hero { position:relative; z-index:1; text-align:center; color:#fff; padding:22px 16px 10px; }
+    .hero h1 { font-size:clamp(22px,4vw,36px); font-weight:800; margin:0 0 4px; letter-spacing:-.02em; }
+    .hero p { font-size:14px; opacity:.85; margin:0; }
+
+    /* ── LAYOUT ── */
+    .wrap { max-width:var(--maxw); margin:0 auto; padding:16px 16px 60px; position:relative; z-index:1; }
+
+    /* ── SECTION TABS ── */
+    .tab-bar { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:0; border-bottom:none; }
+    .tab-btn {
+      padding:9px 16px; border:1px solid #ccc; border-bottom:none; border-radius:10px 10px 0 0;
+      background:#f0f0f0; cursor:pointer; font-weight:700; font-size:13px; color:#555;
+      transition:background .15s,color .15s;
+    }
+    .tab-btn.active { background:#fff; color:var(--green); border-color:#ccc; border-bottom:1px solid #fff; z-index:2; }
+    .tab-btn:hover:not(.active) { background:#e0e0e0; }
+
+    /* ── PANELS ── */
+    .panel { background:#fff; border-radius:0 16px 16px 16px; box-shadow:0 10px 30px rgba(0,0,0,.15); }
+    .panel-inner { padding:20px 22px; }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    /* ── BUILDER FIELDS ── */
+    .fields-row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+    .field { display:flex; flex-direction:column; gap:5px; min-width:150px; }
+    .field label { font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#006600; }
+    select { padding:8px 10px; border:1px solid #dcdcdc; border-radius:8px; background:#dcdcdc; min-width:150px; font-size:13px; }
+    select:disabled { opacity:.45; }
+
+    /* ── PREVIEW ── */
+    .preview-box {
+      margin-top:14px; padding:14px 16px; border:1px dashed #333; border-radius:12px; background:#fafafa;
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    }
+    .code-display { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:17px; font-weight:800; color:#111; }
+    .desc-display { font-size:14px; line-height:1.3; color:#990000; }
+    .price-display { font-size:15px; font-weight:700; color:var(--green); white-space:nowrap; }
+    .sales-display { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:14px; color:#1565c0; margin-top:4px; }
+    .sales-display.none { color:#999; font-style:italic; font-family:inherit; font-size:12px; }
+    .sales-cell { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; color:#1565c0; font-weight:700; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    button { cursor:pointer; border-radius:8px; border:1px solid #dcdcdc; background:#fff; padding:8px 13px; font-weight:700; font-size:13px; }
+    .btn-primary { background:var(--m8-green); border-color:transparent; color:#111; }
+    .btn-sm { font-size:11px; padding:6px 10px; border-radius:7px; }
+    .warn { color:#cc0000; font-size:12px; font-weight:700; margin-top:6px; }
+
+    /* ── BASKET ── */
+    .basket-section { margin-top:20px; }
+    .basket-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; flex-wrap:wrap; }
+    .basket-header h2 { margin:0; color:var(--green); font-size:18px; }
+    .basket-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .basket-wrap { overflow:auto; border:1px solid #eee; border-radius:12px; }
+    .basket-table { width:100%; border-collapse:separate; border-spacing:0; }
+    .basket-table th, .basket-table td { padding:9px 12px; border-bottom:1px solid #eee; text-align:left; vertical-align:middle; background:#fff; }
+    .basket-table th { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:#333; background:#f6f6f6; }
+    .basket-table td.price-cell { text-align:right; font-weight:700; color:var(--green); }
+    .basket-table td.total-cell { text-align:right; font-weight:800; font-size:15px; color:var(--green-dark); }
+    .qty-controls { display:inline-flex; align-items:center; gap:6px; }
+    .qty-btn { width:28px; height:28px; border-radius:6px; border:1px solid #dcdcdc; background:#fff; font-weight:800; font-size:14px; cursor:pointer; }
+    .qty-val { min-width:22px; display:inline-block; text-align:center; font-weight:800; }
+    .remove-btn { color:#cc0000; background:none; border:none; font-size:16px; cursor:pointer; padding:2px 6px; }
+    .muted { opacity:.6; font-style:italic; }
+
+    /* ── KIT SEARCH ── */
+    .kit-search-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+    .kit-search-row input { flex:1; min-width:200px; padding:8px 12px; border:1px solid #dcdcdc; border-radius:8px; font-size:13px; }
+    .kit-search-row select { min-width:160px; }
+    .kit-results { max-height:340px; overflow-y:auto; border:1px solid #eee; border-radius:10px; }
+    .kit-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid #f0f0f0; }
+    .kit-row:last-child { border-bottom:none; }
+    .kit-row:hover { background:#f9fbe7; }
+    .kit-tag { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; color:#006600; font-weight:700; min-width:130px; }
+    .kit-cat { font-size:11px; color:#888; min-width:120px; }
+    .kit-desc { flex:1; font-size:13px; }
+    .kit-price { font-weight:700; color:var(--green); min-width:60px; text-align:right; }
+    .kit-add-btn { background:var(--m8-green); border:none; border-radius:6px; padding:5px 10px; font-weight:700; font-size:12px; cursor:pointer; }
+    .no-results { padding:16px; color:#888; font-style:italic; text-align:center; }
+
+    /* ── LEGEND (collapsible) ── */
+    .legend-toggle-bar { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
+      margin-top:16px; padding:10px 14px; background:#f0f7f0; border:1px solid #c8e6c9;
+      border-radius:10px; color:var(--green); font-weight:700; font-size:13px; }
+    .legend-toggle-bar:hover { background:#e8f5e9; }
+    .legend-chevron { font-size:14px; transition:transform .2s; display:inline-block; }
+    .legend-chevron.open { transform:rotate(90deg); }
+    .legend-body { display:none; margin-top:10px; }
+    .legend-body.open { display:block; }
+    .legend-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; }
+    .legend-card { background:#f9f9f9; border:1px solid #e7e7e7; border-radius:10px; padding:10px 12px; }
+    .legend-card strong { font-size:12px; color:#006600; display:block; margin-bottom:4px; }
+    .legend-card pre { margin:0; white-space:pre-wrap; font-size:11px; line-height:1.4; font-family:ui-monospace,Menlo,Consolas,monospace; }
+    /* ── BOM PREVIEW ── */
+    .bom-preview-section { margin-top:20px; }
+    .bom-preview-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; flex-wrap:wrap; }
+    .bom-preview-header h2 { margin:0; color:var(--green); font-size:18px; }
+    .bom-preview-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .bom-preview-wrap { overflow:auto; border:1px solid #eee; border-radius:12px; }
+    .bom-table { width:100%; border-collapse:separate; border-spacing:0; font-size:12px; }
+    .bom-table th { padding:7px 10px; border-bottom:2px solid #ccc; text-align:center; background:#375623; color:#fff;
+      font-size:10px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+    .bom-table td { padding:7px 10px; border-bottom:1px solid #eee; text-align:center; vertical-align:middle; background:#fff; white-space:nowrap; }
+    .bom-table td.bom-model { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; text-align:left; }
+    .bom-table td.bom-desc { text-align:left; font-size:11px; white-space:normal; min-width:180px; }
+    .bom-table td.bom-price { text-align:right; font-weight:700; color:var(--green); }
+    .bom-table tr.bom-total-row td { background:#f9fbe7; font-weight:800; border-top:2px solid #ccc; }
+    .bom-table tr.bom-pse-row td { background:#fff3e0; font-style:italic; color:#e65100; font-weight:700; }
+    .bom-table tr.bom-empty td { color:#888; font-style:italic; }
+    /* ── DRESS CHECKBOX ── */
+    .dress-label { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#375623; cursor:pointer; }
+    .dress-label input[type=checkbox] { width:16px; height:16px; cursor:pointer; accent-color:#375623; }
+
+    /* ── PRICE LOOKUP HINT ── */
+    .price-hint { font-size:12px; color:#888; margin-top:4px; }
+
+    /* ── FOOTER ── */
+    .footer { text-align:center; color:#fff; opacity:.6; font-size:12px; margin-top:28px; }
+
+    @media(max-width:640px){
+      .tab-btn { font-size:11px; padding:7px 10px; }
+      .fields-row { gap:8px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="modoroll-nav">
+  <a href="BOM_Generator_Unified.html">Models</a>
+  <a href="Kit_Tools.html">Kits</a>
+  <a href="PartNumber_Tools.html">Parts</a>
+  <a href="Resources.html">Docs/Worksheets</a>
+  <a href="Calcs.html">Checks/Calcs</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>MODEL &amp; KIT GENERATOR</h1>
+  <p>Build model numbers for any conveyor type, search and add kit items — all in one shared basket.</p>
+</div>
+
+<div class="wrap">
+
+  <!-- ═══════════════════════════════════════════════
+       TAB BAR
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('straight',this)">▪ Straights</button>
+    <button class="tab-btn" onclick="switchTab('curve',this)">● Curves</button>
+    <button class="tab-btn" onclick="switchTab('divert',this)">⇄ Divert/Merge</button>
+    <button class="tab-btn" onclick="switchTab('transfer',this)">⊞ Transfers</button>
+    <button class="tab-btn" onclick="switchTab('gate',this)">⁞ Gates</button>
+    <button class="tab-btn" onclick="switchTab('tangent',this)">↗ Tangents</button>
+    <button class="tab-btn" onclick="switchTab('kits',this)">🔧 Kits &amp; Accessories</button>
+    <button class="tab-btn" onclick="switchTab('catalog',this)">🔎 Sales Model Lookup</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       STRAIGHTS TAB
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-content active panel" id="tab-straight">
+    <div class="panel-inner">
+      <div class="fields-row" id="straight-builder"></div>
+      <div class="preview-box" id="straight-preview">
+        <div>
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#555;margin-bottom:4px;">Model Number</div>
+          <div class="code-display" id="straight-code">—</div>
+          <div class="desc-display" id="straight-desc" style="margin-top:6px;">—</div>
+          <div class="price-display" id="straight-price"></div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" id="straight-add-btn" onclick="addToBasket('straight')">Add to Basket</button>
+          <button onclick="clearBuilder('straight')">Clear</button>
+        </div>
+      </div>
+      <div class="warn" id="straight-warn"></div>
+    </div>
+        <div class="panel-inner" style="border-top:1px solid #eee;">
+      <div class="legend-toggle-bar" onclick="toggleLegend('straight-legend')">
+        <span class="legend-chevron" id="straight-legend-chevron">▶</span>
+        Code → Description Legend
+      </div>
+      <div class="legend-body" id="straight-legend-body">
+        <div class="legend-grid" id="straight-legend"></div>
+      </div>
+    </div>
+  </div>
+  <!-- ═══════════════════════════════════════════════
+       CURVES TAB
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-content panel" id="tab-curve">
+    <div class="panel-inner">
+      <div class="fields-row" id="curve-builder"></div>
+      <div class="preview-box">
+        <div>
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#555;margin-bottom:4px;">Model Number</div>
+          <div class="code-display" id="curve-code">—</div>
+          <div class="desc-display" id="curve-desc" style="margin-top:6px;">—</div>
+          <div class="price-display" id="curve-price"></div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="addToBasket('curve')">Add to Basket</button>
+          <button onclick="clearBuilder('curve')">Clear</button>
+        </div>
+      </div>
+      <div class="warn" id="curve-warn"></div>
+    </div>
+        <div class="panel-inner" style="border-top:1px solid #eee;">
+      <div class="legend-toggle-bar" onclick="toggleLegend('curve-legend')">
+        <span class="legend-chevron" id="curve-legend-chevron">▶</span>
+        Code → Description Legend
+      </div>
+      <div class="legend-body" id="curve-legend-body">
+        <div class="legend-grid" id="curve-legend"></div>
+      </div>
+    </div>
+  </div>
+  <!-- ═══════════════════════════════════════════════
+       DIVERT/MERGE TAB
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-content panel" id="tab-divert">
+    <div class="panel-inner">
+      <div class="fields-row" id="divert-builder"></div>
+      <div class="preview-box">
+        <div>
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#555;margin-bottom:4px;">Model Number</div>
+          <div class="code-display" id="divert-code">—</div>
+          <div class="desc-display" id="divert-desc" style="margin-top:6px;">—</div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="addToBasket('divert')">Add to Basket</button>
+          <button onclick="clearBuilder('divert')">Clear</button>
+        </div>
+      </div>
+      <div class="warn" id="divert-warn"></div>
+    </div>
+        <div class="panel-inner" style="border-top:1px solid #eee;">
+      <div class="legend-toggle-bar" onclick="toggleLegend('divert-legend')">
+        <span class="legend-chevron" id="divert-legend-chevron">▶</span>
+        Code → Description Legend
+      </div>
+      <div class="legend-body" id="divert-legend-body">
+        <div class="legend-grid" id="divert-legend"></div>
+      </div>
+    </div>
+  </div>
+  <!-- ═══════════════════════════════════════════════
+       TRANSFERS TAB
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-content panel" id="tab-transfer">
+    <div class="panel-inner">
+      <div class="fields-row" id="transfer-builder"></div>
+      <div class="preview-box">
+        <div>
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#555;margin-bottom:4px;">Model Number</div>
+          <div class="code-display" id="transfer-code">—</div>
+          <div class="desc-display" id="transfer-desc" style="margin-top:6px;">—</div>
+          <div class="price-display" id="transfer-price"></div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="addToBasket('transfer')">Add to Basket</button>
+          <button onclick="clearBuilder('transfer')">Clear</button>
+        </div>
+      </div>
+      <div class="warn" id="transfer-warn"></div>
+    </div>
+        <div class="panel-inner" style="border-top:1px solid #eee;">
+      <div class="legend-toggle-bar" onclick="toggleLegend('transfer-legend')">
+        <span class="legend-chevron" id="transfer-legend-chevron">▶</span>
+        Code → Description Legend
+      </div>
+      <div class="legend-body" id="transfer-legend-body">
+        <div class="legend-grid" id="transfer-legend"></div>
+      </div>
+    </div>
+  </div>
+  <!-- ═══════════════════════════════════════════════
+       GATES TAB
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-content panel" id="tab-gate">
+    <div class="panel-inner">
+      <div class="fields-row" id="gate-builder"></div>
+      <div class="preview-box">
+        <div>
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#555;margin-bottom:4px;">Model Number</div>
+          <div class="code-display" id="gate-code">—</div>
+          <div class="desc-display" id="gate-desc" style="margin-top:6px;">—</div>
+          <div class="price-display" id="gate-price"></div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="addToBasket('gate')">Add to Basket</button>
+          <button onclick="clearBuilder('gate')">Clear</button>
+        </div>
+      </div>
+      <div class="warn" id="gate-warn"></div>
+    </div>
+        <div class="panel-inner" style="border-top:1px solid #eee;">
+      <div class="legend-toggle-bar" onclick="toggleLegend('gate-legend')">
+        <span class="legend-chevron" id="gate-legend-chevron">▶</span>
+        Code → Description Legend
+      </div>
+      <div class="legend-body" id="gate-legend-body">
+        <div class="legend-grid" id="gate-legend"></div>
+      </div>
+    </div>
+  </div>
+  <!-- ═══════════════════════════════════════════════
+       TANGENTS TAB
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-content panel" id="tab-tangent">
+    <div class="panel-inner">
+      <div class="fields-row" id="tangent-builder"></div>
+      <div class="preview-box">
+        <div>
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#555;margin-bottom:4px;">Model Number</div>
+          <div class="code-display" id="tangent-code">—</div>
+          <div class="desc-display" id="tangent-desc" style="margin-top:6px;">—</div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="addToBasket('tangent')">Add to Basket</button>
+          <button onclick="clearBuilder('tangent')">Clear</button>
+        </div>
+      </div>
+      <div class="warn" id="tangent-warn"></div>
+    </div>
+        <div class="panel-inner" style="border-top:1px solid #eee;">
+      <div class="legend-toggle-bar" onclick="toggleLegend('tangent-legend')">
+        <span class="legend-chevron" id="tangent-legend-chevron">▶</span>
+        Code → Description Legend
+      </div>
+      <div class="legend-body" id="tangent-legend-body">
+        <div class="legend-grid" id="tangent-legend"></div>
+      </div>
+    </div>
+  </div>
+  <!-- ═══════════════════════════════════════════════
+       KITS & ACCESSORIES TAB
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-content panel" id="tab-kits">
+    <div class="panel-inner">
+      <div class="kit-search-row">
+        <input type="text" id="kit-search-input" placeholder="Search part number, description, category..." oninput="renderKitResults()"/>
+        <select id="kit-cat-filter" onchange="renderKitResults()">
+          <option value="">All Categories</option>
+          <option>Guard Rail</option>
+          <option>Electrical Kit - ZPA</option>
+          <option>Electrical Kit - Full Control</option>
+          <option>Power Supply</option>
+          <option>Mechanical Accessory</option>
+          <option>Support</option>
+        </select>
+      </div>
+      <div class="kit-results" id="kit-results"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SALES MODEL LOOKUP TAB
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-content panel" id="tab-catalog">
+    <div class="panel-inner">
+      <div class="kit-search-row">
+        <input type="text" id="cat-search-input" placeholder="Type a Sales Model (e.g. FS152H124L1) or Engineering Model…" oninput="renderCatalogResults()"/>
+      </div>
+      <div class="price-hint" id="cat-count"></div>
+      <div class="kit-results" id="cat-results"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SHARED BASKET
+  ═══════════════════════════════════════════════ -->
+  <div class="basket-section panel" style="margin-top:20px;">
+    <div class="panel-inner">
+      <div class="basket-header">
+        <h2>🛒 Basket</h2>
+        <div class="basket-actions">
+          <button class="btn-sm btn-primary" onclick="copyBasketText()">Copy (Text)</button>
+          <button class="btn-sm btn-primary" onclick="downloadBasketXlsx()">Download (.xlsx)</button>
+          <button class="btn-sm" onclick="clearBasket()">Clear Basket</button>
+        </div>
+      </div>
+      <div class="basket-wrap">
+        <table class="basket-table" id="basket-table">
+          <thead>
+            <tr>
+              <th style="width:90px;">Qty</th>
+              <th>Model / Part #</th>
+              <th>Sales Model</th>
+              <th>Description</th>
+              <th style="width:100px;text-align:right;">Unit Price</th>
+              <th style="width:100px;text-align:right;">Extended</th>
+              <th style="width:50px;"></th>
+            </tr>
+          </thead>
+          <tbody id="basket-body">
+            <tr><td colspan="7" class="muted" style="padding:14px;">Basket is empty.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOM PREVIEW -->
+  <div class="bom-preview-section panel" style="margin-top:20px;">
+    <div class="panel-inner">
+      <div class="bom-preview-header">
+        <h2>&#128203; BOM Preview</h2>
+        <div class="bom-preview-controls">
+          <label class="dress-label">
+            <input type="checkbox" id="opt-dress" onchange="renderBomPreview()"/>
+            Fully Dressed Covers (×2)
+          </label>
+        </div>
+      </div>
+      <div class="bom-preview-wrap">
+        <table class="bom-table">
+          <thead><tr>
+            <th>QTY</th><th>FR#</th><th>MODEL</th><th>SALES MODEL</th><th>DESCRIPTION</th><th>LIST PRICE</th>
+            <th>LENGTH</th><th>ZONES</th><th>CARRIERS</th><th>CARDS</th><th>G-RAIL</th>
+            <th>FLAT BLACK</th><th>SUPPORTS</th><th>COVERS</th><th>OBANDS</th><th>WATTS</th><th>TOTAL PRICE</th>
+          </tr></thead>
+          <tbody id="bom-preview-body">
+            <tr class="bom-empty"><td colspan="17" style="padding:14px;">Add items to the basket to see BOM preview.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="footer">Model &amp; Kit Generator — v2.0 &nbsp;|&nbsp; ModoEight &copy; 2026</div>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+// ═══════════════════════════════════════════════════════════════
+//  LEGEND TOGGLE
+// ═══════════════════════════════════════════════════════════════
+function toggleLegend(baseId) {
+  const body    = document.getElementById(baseId + '-body');
+  const chevron = document.getElementById(baseId + '-chevron');
+  if (!body) return;
+  const isOpen = body.classList.toggle('open');
+  if (chevron) chevron.classList.toggle('open', isOpen);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DXF DESCRIPTION LOOKUP TABLES  (matches DXF_BOM_Gen format)
+// ═══════════════════════════════════════════════════════════════
+const BRAND_DESC   = {'0':'Any Available','1':'Interroll','2':'Pulse','3':'Itoh Denki','4':'Modoroller'};
+const PROTO_DESC   = {'00':'No Controls','01':'AS-i','02':'ZPA','03':'ModoLink','04':'Numina','05':'KPI','06':'Pulse','07':'Interroll Multi Control','08':'Interroll 2248','77':'Hybrid/Custom'};
+const FINISH_DESC  = {'STD':'Modoroll Grey','RAL':'Custom Color','ESD':'Anti-Static'};
+const RAIL_DESC    = {'FL':'Fliprail Roller Set Low','FH':'Fliprail Roller Set High','SL':'Scale Bed Set Low','SH':'Scale Bed Set High','HD':'Heavy Duty Series'};
+const ROLLER_DESC  = {'TG':'Two Groove','GR':'Gravity Roller','PV':'Poly V','CH':'Chain','BI':'Belted Incline','BD':'Belted Decline/Flat','VC':'V Conform','PO':'POLY-O','SR':'Skew Right','SL':'Skew Left'};
+const MODULE_CURVE = {'H':'Hedra','T':'Tapered'};
+const ROLLERSET_DESC = {'L':'Roller Set Low','H':'Roller Set High'};
+const MODULE_DM    = {'DW':'Pop-up Wheel Divert','MG':'Merge','DS':'ModoSort'};
+const DIR_DM       = {'L':'Package to/from Left','R':'Package to/from Right','B':'Bi-Directional'};
+const MODULE_TR    = {'MX':'ModoX90','MS':'ModoSort90'};
+const MODULE_GT    = {'GL':'Gate Roller Set Low (RSL)','GH':'Gate Roller Set High (RSH)'};
+const POWER_DESC   = {'P':'Powered','U':'Un-Powered','G':'Gravity'};
+const HAND_LRIH    = {'LH':'Left Hand Controls','RH':'Right Hand Controls','LI':'Left Inverted Controls','RI':'Right Inverted Controls','NC':'No Controls',
+                      'L':'Left Hand Controls','R':'Right Hand Controls','N':'No Controls'};
+const HAND_LRN     = {'L':'LH Control','R':'RH Control','N':'No Control'};
+// ═══════════════════════════════════════════════════════════════
+//  TYPE IDENTIFICATION & PARSERS
+// ═══════════════════════════════════════════════════════════════
+function identifyType(model) {
+  if (!model || typeof model !== 'string') return 'unknown';
+  const m = model.trim().toUpperCase();
+  // Tangent: FL/FH + 3-digit length + [PUG] + 2-digit BF - 2-char rollerType - brand + finish
+  if (/^(FL|FH)\d{3}[PUG]\d{2}-[A-Z]{2}-\d[A-Z]{3}$/.test(m)) return 'tangent';
+  // Straight: rail(2) + len(3) + power(1) + bf(2) + rcd(2) - zones(1) + rollerType(2) + zoneLen(3) - hand(1-2) + brand(1) + proto(2) + finish(3)
+  if (/^(FL|FH|SL|SH|HD)\d{3}[PG]\d{2}C\d-\d[A-Z]{2}\d{3}-[A-Z]{1,2}\d\d{2}[A-Z]{3}$/.test(m)) return 'straight';
+  // Curve: module(1) + rollerSet(1) + angle(2) + bf(2) + rcd(2) - zones(1) + rollerType(2) + radius(3) - hand(1-2) + brand(1) + proto(2) + finish(3)
+  if (/^[HT][LH]\d{2}\d{2}C\d-\d[A-Z]{2}\d{3}-[A-Z]{1,2}\d\d{2}[A-Z]{3}$/.test(m)) return 'curve';
+  // Divert/Merge
+  if (/^(DW|DS|MG)\d{2}[LRB]\d{3}C[23]-(TG|PV)?\d{2}[LRN]\d\d{2}[A-Z]{3}$/.test(m)) return 'divert';
+  // Transfer
+  if (/^(MX|MS)\d{2}\d{2}[RLB]-[LRN]\d\d{2}[A-Z]{3}$/.test(m)) return 'transfer';
+  // Gate
+  if (/^(GL|GH)\d{2}\d{2}-\d{2}C[23](TG|PV)[012]-[LRN]\d\d{2}[A-Z]{3}$/.test(m)) return 'gate';
+  return 'unknown';
+}
+function parseStraight(model) {
+  // controlHand may be 1 or 2 chars (L/R/N from builder, LH/RH/LI/RI/NC from DXF)
+  const m = model.match(/^([A-Z]{2})(\d{3})([PG])(\d{2})(C\d)-(\d)([A-Z]{2})(\d{3})-([A-Z]{1,2})(\d)(\d{2})([A-Z]{3})$/);
+  if (!m) return null;
+  return { railType:m[1], railLength:parseInt(m[2]), power:m[3], bf:parseInt(m[4]),
+    rcd:m[5], zones:parseInt(m[6]), rollerType:m[7], zoneLength:parseInt(m[8]),
+    controlHand:m[9], brand:m[10], protocol:m[11], finish:m[12] };
+}
+function parseCurve(model) {
+  const m = model.match(/^([A-Z])([LH])(\d{2})(\d{2})(C\d)-(\d)([A-Z]{2})(\d{3})-([A-Z]{1,2})(\d)(\d{2})([A-Z]{3})$/);
+  if (!m) return null;
+  return { module:m[1], rollerSet:m[2], angle:parseInt(m[3]), bf:parseInt(m[4]),
+    rcd:m[5], zones:parseInt(m[6]), rollerType:m[7], radius:parseInt(m[8]),
+    controlHand:m[9], brand:m[10], protocol:m[11], finish:m[12] };
+}
+function parseDivert(model) {
+  const m = model.match(/^(DW|MG|DS)(\d{2})([LRB])(\d{3})(C\d)-(TG|PV)?(\d{2})([LRN])(\d)(\d{2})([A-Z]{3})$/);
+  if (!m) return null;
+  return { module:m[1], bf:parseInt(m[2]), direction:m[3], zoneLength:parseInt(m[4]),
+    rcd:m[5], rollerType:m[6] || '', dischargeAngle:parseInt(m[7]), controlHand:m[8], brand:m[9], protocol:m[10], finish:m[11] };
+}
+function parseTransfer(model) {
+  const m = model.match(/^(MX|MS)(\d{2})(\d{2})([RLB])-([LRN])(\d)(\d{2})([A-Z]{3})$/);
+  if (!m) return null;
+  return { module:m[1], bf:parseInt(m[2]), zoneLength:parseInt(m[3]), direction:m[4],
+    controlHand:m[5], brand:m[6], protocol:m[7], finish:m[8] };
+}
+function parseGate(model) {
+  const m = model.match(/^(GL|GH)(\d{2})(\d{2})-(\d{2})(C[23])(TG|PV)([012])-([LRN])(\d)(\d{2})([A-Z]{3})$/);
+  if (!m) return null;
+  return { module:m[1], arm:parseInt(m[2]), tangent:parseInt(m[3]), bf:parseInt(m[4]),
+    rcd:m[5], rollerType:m[6], zones:parseInt(m[7]),
+    controlHand:m[8], brand:m[9], protocol:m[10], finish:m[11] };
+}
+function parseTangent(model) {
+  const m = model.match(/^([A-Z]{2})(\d{3})([PUG])(\d{2})-([A-Z]{2})-(\d)([A-Z]{3})$/);
+  if (!m) return null;
+  return { railType:m[1], length:parseInt(m[2]), power:m[3], bf:parseInt(m[4]),
+    rollerType:m[5], brand:m[6], finish:m[7] };
+}
+// ═══════════════════════════════════════════════════════════════
+//  DXF-FORMAT DESCRIPTION BUILDERS
+// ═══════════════════════════════════════════════════════════════
+function descStraight(p) {
+  const parts = [];
+  if (RAIL_DESC[p.railType]) parts.push(RAIL_DESC[p.railType]);
+  parts.push(`${p.railLength}"`);
+  if (p.power === 'P') parts.push('Powered'); else if (p.power === 'G') parts.push('Gravity');
+  parts.push(`${p.bf}"BF ${p.rcd.replace('C','')}" Centers`);
+  parts.push(`${p.zones} Zone`);
+  if (ROLLER_DESC[p.rollerType]) parts.push(ROLLER_DESC[p.rollerType]);
+  if (p.zoneLength) parts.push(`${p.zoneLength}" zone`);
+  if (HAND_LRIH[p.controlHand]) parts.push(HAND_LRIH[p.controlHand]);
+  if (p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (p.protocol !== '00' && PROTO_DESC[p.protocol]) parts.push(PROTO_DESC[p.protocol]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function descCurve(p) {
+  const parts = [];
+  if (MODULE_CURVE[p.module]) parts.push(MODULE_CURVE[p.module]);
+  if (ROLLERSET_DESC[p.rollerSet]) parts.push(ROLLERSET_DESC[p.rollerSet]);
+  parts.push(`${p.angle}\u00b0`);
+  parts.push(`${p.bf}"BF ${p.rcd.replace('C','')}" Centers`);
+  parts.push(`${p.zones} Zone`);
+  if (ROLLER_DESC[p.rollerType]) parts.push(ROLLER_DESC[p.rollerType]);
+  parts.push(`${p.radius}" radius`);
+  if (HAND_LRIH[p.controlHand]) parts.push(HAND_LRIH[p.controlHand]);
+  if (p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (p.protocol !== '00' && PROTO_DESC[p.protocol]) parts.push(PROTO_DESC[p.protocol]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function divertModelName(p) {
+  if (p.module === 'DW') return p.dischargeAngle === 60 ? 'ModoX60' : 'ModoX30';
+  if (p.module === 'DS') return p.dischargeAngle === 60 ? 'ModoSort60' : 'ModoSort30';
+  return MODULE_DM[p.module] || p.module;
+}
+function descDivert(p) {
+  const parts = [];
+  parts.push(divertModelName(p));
+  parts.push(`${p.bf}" BF`);
+  if (DIR_DM[p.direction]) parts.push(DIR_DM[p.direction]);
+  parts.push(`${p.zoneLength}" Zone`);
+  parts.push(`${p.rcd.replace('C','')}" Centers`);
+  if (p.rollerType && ROLLER_DESC[p.rollerType]) parts.push(ROLLER_DESC[p.rollerType]);
+  if (HAND_LRN[p.controlHand]) parts.push(HAND_LRN[p.controlHand]);
+  if (p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (p.protocol !== '00' && PROTO_DESC[p.protocol]) parts.push(PROTO_DESC[p.protocol]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function descTransfer(p) {
+  const parts = [];
+  if (MODULE_TR[p.module]) parts.push(MODULE_TR[p.module]);
+  parts.push(`${p.bf}" BF`);
+  parts.push(`${p.zoneLength}" Zone`);
+  if (DIR_DM[p.direction]) parts.push(DIR_DM[p.direction]);
+  if (HAND_LRN[p.controlHand]) parts.push(HAND_LRN[p.controlHand]);
+  if (p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (p.protocol !== '00' && PROTO_DESC[p.protocol]) parts.push(PROTO_DESC[p.protocol]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function descGate(p) {
+  const parts = [];
+  if (MODULE_GT[p.module]) parts.push(MODULE_GT[p.module]);
+  parts.push(`${p.arm}" Arm`);
+  parts.push(`${p.tangent}" Tangent`);
+  parts.push(`${p.bf}" BF`);
+  parts.push(`${p.rcd.replace('C','')}" Centers`);
+  if (ROLLER_DESC[p.rollerType]) parts.push(ROLLER_DESC[p.rollerType]);
+  parts.push(p.zones === 0 ? 'Gravity Gate' : `${p.zones} Zone${p.zones !== 1 ? 's' : ''}`);
+  if (HAND_LRN[p.controlHand]) parts.push(HAND_LRN[p.controlHand]);
+  if (p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (p.protocol !== '00' && PROTO_DESC[p.protocol]) parts.push(PROTO_DESC[p.protocol]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function descTangent(p) {
+  const parts = [];
+  if (RAIL_DESC[p.railType]) parts.push(RAIL_DESC[p.railType]);
+  parts.push(`${p.length}"`);
+  if (POWER_DESC[p.power]) parts.push(POWER_DESC[p.power]);
+  parts.push(`${p.bf}BF`);
+  if (ROLLER_DESC[p.rollerType]) parts.push(ROLLER_DESC[p.rollerType]);
+  if (p.power !== 'G' && p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function getDescriptionDxf(model) {
+  const t = identifyType(model);
+  switch(t) {
+    case 'straight': { const p = parseStraight(model); return p ? descStraight(p) : model; }
+    case 'curve':    { const p = parseCurve(model);    return p ? descCurve(p)    : model; }
+    case 'divert':   { const p = parseDivert(model);   return p ? descDivert(p)   : model; }
+    case 'transfer': { const p = parseTransfer(model); return p ? descTransfer(p) : model; }
+    case 'gate':     { const p = parseGate(model);     return p ? descGate(p)     : model; }
+    case 'tangent':  { const p = parseTangent(model);  return p ? descTangent(p)  : model; }
+    default: return model;
+  }
+}
+// ═══════════════════════════════════════════════════════════════
+//  MATH HELPERS
+// ═══════════════════════════════════════════════════════════════
+function arcLengthIn(radiusIn, angleDeg) { return radiusIn * (angleDeg * Math.PI / 180); }
+function ceilFt(inches) { return Math.ceil(inches / 12); }
+function roundFt(inches) { return Math.round(inches / 12); }
+function ftStr(inches) { return `${roundFt(inches)}'`; }
+// ═══════════════════════════════════════════════════════════════
+//  BOM ROW DERIVATION  (ported from DXF_BOM_Gen.html)
+// ═══════════════════════════════════════════════════════════════
+function deriveRow(blockName, qty, dressed) {
+  const type = identifyType(blockName);
+  if (type === 'straight') {
+    const p = parseStraight(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isGravity  = p.power === 'G' || p.rollerType === 'GR';
+    const isRSH      = p.railType === 'FH';
+    const rcdIn      = parseInt(p.rcd.replace('C',''));
+    const totalR     = Math.round(p.railLength / rcdIn);
+    const zonesCt    = isGravity ? 0 : qty * p.zones;
+    const carriers   = qty * (isGravity ? totalR : totalR - p.zones);
+    const cards      = isGravity ? 0 : qty * Math.max(1, Math.ceil(p.zones / 2));
+    const grail      = isRSH ? qty * p.zones : 0;
+    const fbIn       = isGravity ? 0 : qty * 2 * p.railLength;
+    let coversPerBed = 0;
+    if (!isGravity) { coversPerBed = p.zones <= 2 ? 1 : p.zones <= 4 ? 2 : 3; }
+    const covers     = qty * coversPerBed * (dressed ? 2 : 1);
+    const obands     = isGravity ? 0 : qty * (totalR - 1);
+    const wattsPerZ  = p.rollerType === 'BI' ? 50 : 35;
+    const watts      = isGravity ? 0 : qty * p.zones * wattsPerZ;
+    // Price lookup from STRAIGHTS_PRICE using parsed attributes
+    let listPrice = null;
+    if (!isGravity) {
+      const bfKey = p.bf + '"BF';
+      const railKey = p.railLength + '"';
+      const priceRow = STRAIGHTS_PRICE.find(r => r.bf === bfKey && r.rail === railKey && r.zones === p.zones);
+      if (priceRow) {
+        let col = 'rsl';
+        if (p.rollerType === 'PV') col = 'polyv';
+        else if (p.rollerType === 'BI' || p.rollerType === 'BD') col = 'fwb';
+        else if (rcdIn === 2) col = 'c2';
+        if (p.railType === 'FH' || p.railType === 'SH') {
+          if (col === 'rsl') col = 'rsh';
+          else if (col === 'c2') col = 'c2rsh';
+          else if (col === 'polyv') col = 'polyvc2';
+          else if (col === 'fwb') col = 'fwbrsh';
+        }
+        listPrice = priceRow[col] !== undefined ? priceRow[col] : (priceRow.rsl || null);
+      }
+    }
+    return { qty, fr:'Coming Soon', model:blockName, desc:descStraight(p),
+      listPrice, length:ftStr(qty * p.railLength), _lenIn:qty * p.railLength,
+      zones:zonesCt, carriers, cards, grail,
+      flatBlack:isGravity ? `0'` : `${ceilFt(fbIn)}'`, _fbIn:fbIn,
+      supports:qty, covers, obands, watts, totalPrice:listPrice ? qty * listPrice : null };
+  }
+  if (type === 'curve') {
+    const p = parseCurve(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isGravity  = p.zones === 0;
+    const isRSH      = p.rollerSet === 'H';
+    const rcdIn      = parseInt(p.rcd.replace('C',''));
+    const arcIn      = arcLengthIn(p.radius, p.angle);
+    const outerArcIn = arcLengthIn(p.radius + p.bf, p.angle);
+    const totalR     = Math.round(arcIn / rcdIn);
+    const zonesCt    = isGravity ? 0 : qty * p.zones;
+    const carriers   = qty * (isGravity ? totalR : totalR - p.zones);
+    const cards      = isGravity ? 0 : qty * Math.max(1, Math.ceil(p.zones / 2));
+    const grail      = isRSH ? qty * p.zones : 0;
+    const fbIn       = isGravity ? 0 : qty * outerArcIn;
+    const supportsPerUnit = p.angle === 90 ? 2 : 1;
+    const coversPerUnit   = isGravity ? 0 : Math.ceil(arcIn / 60);
+    const covers     = qty * coversPerUnit * (dressed ? 2 : 1);
+    const obands     = isGravity ? 0 : qty * (totalR - 1);
+    const watts      = isGravity ? 0 : qty * p.zones * 35;
+    // Price lookup from CURVES_PRICE using parsed attributes
+    let listPrice = null;
+    if (!isGravity) {
+      const curveRow = CURVES_PRICE.find(r => r.angle === String(p.angle));
+      if (curveRow) {
+        if (rcdIn === 2) listPrice = isRSH ? curveRow.c2rsh : curveRow.c2;
+        else listPrice = isRSH ? curveRow.rsh : curveRow.rsl;
+      }
+    }
+    return { qty, fr:'Coming Soon', model:blockName, desc:descCurve(p),
+      listPrice, length:ftStr(qty * arcIn), _lenIn:qty * arcIn,
+      zones:zonesCt, carriers, cards, grail,
+      flatBlack:isGravity ? `0'` : `${ceilFt(fbIn)}'`, _fbIn:fbIn,
+      supports:qty * supportsPerUnit, covers, obands, watts, totalPrice:listPrice ? qty * listPrice : null };
+  }
+  if (type === 'divert') {
+    const p = parseDivert(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isNoControl = p.controlHand === 'N' || p.protocol === '00';
+    const isMerge     = p.module === 'MG';
+    const isNumina    = p.protocol === '04';
+    const is60deg     = p.dischargeAngle === 60;
+    const totalLen    = 3 * p.zoneLength;
+    const zonesCt     = isNoControl ? 0 : qty * 3;
+    let cardsPerUnit  = 0;
+    if (!isNoControl) { cardsPerUnit = isMerge ? 4 : isNumina ? 6 : 5; }
+    const fbIn        = qty * 2 * totalLen;
+    const covers      = qty * 3 * (dressed ? 2 : 1);
+    // ModoX60/ModoSort60 = 260W, ModoX30/ModoSort30 = 260W, Merge = 140W (3 zones × ~47W)
+    const watts       = isNoControl ? 0 : qty * (isMerge ? 140 : 260);
+    // Price lookup from MODOX_PRICE
+    let listPrice = null;
+    const bfKey = 'bf' + p.bf;
+    const section = p.zoneLength === 36 ? '36" Zone' : '24" and 30" Zones';
+    if (p.module === 'DW' || p.module === 'DS') {
+      const mxName = is60deg ? 'ModoX60' : 'ModoX30';
+      const pRow = MODOX_PRICE.find(r => r.model === mxName && r.section === section);
+      if (pRow && pRow[bfKey]) {
+        listPrice = p.module === 'DS' ? Math.round(pRow[bfKey] * 1.30 / 50) * 50 : pRow[bfKey];
+      }
+    } else if (p.module === 'MG') {
+      const bedBf = p.bf + '"BF'; const bedRail = p.zoneLength + '"';
+      const bedRow = STRAIGHTS_PRICE.find(r => r.bf === bedBf && r.rail === bedRail && r.zones === 1);
+      if (bedRow) {
+        const bedPrice = p.rcd === 'C2' ? bedRow.c2rsh : bedRow.rsh;
+        listPrice = 3 * bedPrice + 3800;
+      }
+    }
+    return { qty, fr:'Coming Soon', model:blockName, desc:descDivert(p),
+      listPrice, length:ftStr(qty * totalLen), _lenIn:qty * totalLen,
+      zones:zonesCt, carriers:0, cards:qty * cardsPerUnit, grail:0,
+      flatBlack:`${ceilFt(fbIn)}'`, _fbIn:fbIn,
+      supports:qty * 4, covers, obands:qty * 30, watts, totalPrice:listPrice ? qty * listPrice : null };
+  }
+  if (type === 'transfer') {
+    const p = parseTransfer(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isNoControl = p.controlHand === 'N' || p.protocol === '00';
+    const isNumina    = p.protocol === '04';
+    const cards       = isNoControl ? 0 : qty * (isNumina ? 3 : 2);
+    const fbIn        = qty * 2 * p.zoneLength;
+    const covers      = qty * 1 * (dressed ? 2 : 1);
+    const watts       = isNoControl ? 0 : qty * 225;
+    return { qty, fr:'Coming Soon', model:blockName, desc:descTransfer(p),
+      listPrice:null, length:ftStr(qty * p.zoneLength), _lenIn:qty * p.zoneLength,
+      zones:isNoControl ? 0 : qty, carriers:0, cards, grail:0,
+      flatBlack:`${ceilFt(fbIn)}'`, _fbIn:fbIn,
+      supports:qty * 3, covers, obands:qty * 20, watts, totalPrice:null };
+  }
+  if (type === 'gate') {
+    const p = parseGate(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isNoControl = p.controlHand === 'N' || p.zones === 0;
+    const totalLen    = p.arm + p.tangent;
+    const fbIn        = qty * 2 * totalLen;
+    const covers      = qty * 2 * (dressed ? 2 : 1);
+    const watts       = isNoControl ? 0 : qty * p.zones * 35;
+    return { qty, fr:'Coming Soon', model:blockName, desc:descGate(p),
+      listPrice:null, length:ftStr(qty * totalLen), _lenIn:qty * totalLen,
+      zones:qty * p.zones, carriers:0, cards:isNoControl ? 0 : qty,
+      grail:0, flatBlack:isNoControl ? `0'` : `${ceilFt(fbIn)}'`,
+      _fbIn:isNoControl ? 0 : fbIn,
+      supports:qty * (p.zones > 0 ? p.zones * 2 : 1),
+      covers, obands:qty * p.zones * 8, watts, totalPrice:null };
+  }
+  if (type === 'tangent') {
+    const p = parseTangent(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isGravity  = p.power === 'G' || p.rollerType === 'GR';
+    const isPowered  = p.power === 'P';
+    const rcdIn      = 3;
+    const totalR     = Math.max(1, Math.round(p.length / rcdIn));
+    const carriers   = isPowered ? totalR - 1 : totalR;
+    const obands     = isGravity ? 0 : qty * (totalR + 1);
+    const watts      = isPowered ? qty * 35 : 0;
+    return { qty, fr:'Coming Soon', model:blockName, desc:descTangent(p),
+      listPrice:null, length:ftStr(qty * p.length), _lenIn:qty * p.length,
+      zones:0, carriers:qty * carriers, cards:0, grail:0,
+      flatBlack:`0'`, _fbIn:0,
+      supports:0, covers:0, obands, watts, totalPrice:null };
+  }
+  return fallbackRow(blockName, qty);
+}
+function fallbackRow(blockName, qty) {
+  return { qty, fr:'\u2014', model:blockName, desc:blockName,
+    listPrice:null, length:'\u2014', _lenIn:0,
+    zones:'\u2014', carriers:'\u2014', cards:'\u2014', grail:'\u2014', flatBlack:'\u2014', _fbIn:0,
+    supports:'\u2014', covers:'\u2014', obands:'\u2014', watts:0, totalPrice:null };
+}
+// ═══════════════════════════════════════════════════════════════
+//  PRICING DATA
+// ═══════════════════════════════════════════════════════════════
+const STRAIGHTS_PRICE = [
+  {bf:'15"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4450,rsh:4750,c2:5100,c2rsh:5400,polyv:4750,polyvc2:5400,fwb:5450,fwbrsh:5750},
+  {bf:'15"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2400,rsh:2550,c2:2750,c2rsh:2900,polyv:2550,polyvc2:2900,fwb:2900,fwbrsh:3050},
+  {bf:'15"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1400,rsh:1500,c2:1600,c2rsh:1650,polyv:1500,polyvc2:1650,fwb:1650,fwbrsh:1750},
+  {bf:'15"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:4900,rsh:5200,c2:5550,c2rsh:5850,polyv:5200,polyvc2:5850,fwb:5900,fwbrsh:6200},
+  {bf:'15"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2550,rsh:2700,c2:2900,c2rsh:3050,polyv:2700,polyvc2:3050,fwb:3050,fwbrsh:3200},
+  {bf:'15"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1550,rsh:1650,c2:1750,c2rsh:1800,polyv:1650,polyvc2:1800,fwb:1800,fwbrsh:1900},
+  {bf:'15"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4250,rsh:4550,c2:4900,c2rsh:5200,polyv:4550,polyvc2:5200,fwb:5250,fwbrsh:5550},
+  {bf:'15"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2200,rsh:2350,c2:2550,c2rsh:2700,polyv:2350,polyvc2:2700,fwb:2700,fwbrsh:2850},
+  {bf:'15"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1350,rsh:1450,c2:1550,c2rsh:1600,polyv:1450,polyvc2:1600,fwb:1600,fwbrsh:1700},
+  {bf:'15"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6200,rsh:6650,c2:7150,c2rsh:7600,polyv:6650,polyvc2:7600,fwb:7700,fwbrsh:8150},
+  {bf:'18"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4500,rsh:4800,c2:5150,c2rsh:5450,polyv:4800,polyvc2:5450,fwb:5500,fwbrsh:5800},
+  {bf:'18"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2450,rsh:2600,c2:2800,c2rsh:2950,polyv:2600,polyvc2:2950,fwb:2950,fwbrsh:3100},
+  {bf:'18"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+  {bf:'18"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:4950,rsh:5250,c2:5600,c2rsh:5900,polyv:5250,polyvc2:5900,fwb:5950,fwbrsh:6250},
+  {bf:'18"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2600,rsh:2750,c2:2950,c2rsh:3100,polyv:2750,polyvc2:3100,fwb:3100,fwbrsh:3250},
+  {bf:'18"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1600,rsh:1700,c2:1800,c2rsh:1850,polyv:1700,polyvc2:1850,fwb:1850,fwbrsh:1950},
+  {bf:'18"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4300,rsh:4600,c2:4950,c2rsh:5250,polyv:4600,polyvc2:5250,fwb:5300,fwbrsh:5600},
+  {bf:'18"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2250,rsh:2400,c2:2600,c2rsh:2750,polyv:2400,polyvc2:2750,fwb:2750,fwbrsh:2900},
+  {bf:'18"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1400,rsh:1500,c2:1600,c2rsh:1650,polyv:1500,polyvc2:1650,fwb:1650,fwbrsh:1750},
+  {bf:'18"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6250,rsh:6700,c2:7200,c2rsh:7650,polyv:6700,polyvc2:7650,fwb:7750,fwbrsh:8200},
+  {bf:'21"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4500,rsh:4800,c2:5150,c2rsh:5450,polyv:4800,polyvc2:5450,fwb:5500,fwbrsh:5800},
+  {bf:'21"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2450,rsh:2600,c2:2800,c2rsh:2950,polyv:2600,polyvc2:2950,fwb:2950,fwbrsh:3100},
+  {bf:'21"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+  {bf:'21"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:4950,rsh:5250,c2:5600,c2rsh:5900,polyv:5250,polyvc2:5900,fwb:5950,fwbrsh:6250},
+  {bf:'21"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2600,rsh:2750,c2:2950,c2rsh:3100,polyv:2750,polyvc2:3100,fwb:3100,fwbrsh:3250},
+  {bf:'21"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1600,rsh:1700,c2:1800,c2rsh:1850,polyv:1700,polyvc2:1850,fwb:1850,fwbrsh:1950},
+  {bf:'21"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4350,rsh:4650,c2:5000,c2rsh:5300,polyv:4650,polyvc2:5300,fwb:5350,fwbrsh:5650},
+  {bf:'21"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2250,rsh:2400,c2:2600,c2rsh:2750,polyv:2400,polyvc2:2750,fwb:2750,fwbrsh:2900},
+  {bf:'21"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1400,rsh:1500,c2:1600,c2rsh:1650,polyv:1500,polyvc2:1650,fwb:1650,fwbrsh:1750},
+  {bf:'21"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6300,rsh:6750,c2:7300,c2rsh:7750,polyv:6750,polyvc2:7750,fwb:7800,fwbrsh:8250},
+  {bf:'24"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4550,rsh:4850,c2:5200,c2rsh:5500,polyv:4850,polyvc2:5500,fwb:5550,fwbrsh:5850},
+  {bf:'24"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2450,rsh:2600,c2:2800,c2rsh:2950,polyv:2600,polyvc2:2950,fwb:2950,fwbrsh:3100},
+  {bf:'24"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+  {bf:'24"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:5000,rsh:5300,c2:5650,c2rsh:5950,polyv:5300,polyvc2:5950,fwb:6000,fwbrsh:6300},
+  {bf:'24"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2600,rsh:2750,c2:2950,c2rsh:3100,polyv:2750,polyvc2:3100,fwb:3100,fwbrsh:3250},
+  {bf:'24"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1600,rsh:1700,c2:1800,c2rsh:1850,polyv:1700,polyvc2:1850,fwb:1850,fwbrsh:1950},
+  {bf:'24"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4350,rsh:4650,c2:5000,c2rsh:5300,polyv:4650,polyvc2:5300,fwb:5350,fwbrsh:5650},
+  {bf:'24"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2250,rsh:2400,c2:2600,c2rsh:2750,polyv:2400,polyvc2:2750,fwb:2750,fwbrsh:2900},
+  {bf:'24"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1400,rsh:1500,c2:1600,c2rsh:1650,polyv:1500,polyvc2:1650,fwb:1650,fwbrsh:1750},
+  {bf:'24"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6350,rsh:6800,c2:7350,c2rsh:7800,polyv:6800,polyvc2:7800,fwb:7850,fwbrsh:8300},
+  {bf:'27"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4550,rsh:4850,c2:5200,c2rsh:5500,polyv:4850,polyvc2:5500,fwb:5550,fwbrsh:5850},
+  {bf:'27"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2450,rsh:2600,c2:2800,c2rsh:2950,polyv:2600,polyvc2:2950,fwb:2950,fwbrsh:3100},
+  {bf:'27"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+  {bf:'27"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:5000,rsh:5300,c2:5650,c2rsh:5950,polyv:5300,polyvc2:5950,fwb:6000,fwbrsh:6300},
+  {bf:'27"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2600,rsh:2750,c2:2950,c2rsh:3100,polyv:2750,polyvc2:3100,fwb:3100,fwbrsh:3250},
+  {bf:'27"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1600,rsh:1700,c2:1800,c2rsh:1850,polyv:1700,polyvc2:1850,fwb:1850,fwbrsh:1950},
+  {bf:'27"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4400,rsh:4700,c2:5050,c2rsh:5350,polyv:4700,polyvc2:5350,fwb:5400,fwbrsh:5700},
+  {bf:'27"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2300,rsh:2450,c2:2650,c2rsh:2800,polyv:2450,polyvc2:2800,fwb:2800,fwbrsh:2950},
+  {bf:'27"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1400,rsh:1500,c2:1600,c2rsh:1650,polyv:1500,polyvc2:1650,fwb:1650,fwbrsh:1750},
+  {bf:'27"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6350,rsh:6800,c2:7350,c2rsh:7800,polyv:6800,polyvc2:7800,fwb:7850,fwbrsh:8300},
+  {bf:'30"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4600,rsh:4900,c2:5250,c2rsh:5550,polyv:4900,polyvc2:5550,fwb:5600,fwbrsh:5900},
+  {bf:'30"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2500,rsh:2650,c2:2850,c2rsh:3000,polyv:2650,polyvc2:3000,fwb:3000,fwbrsh:3150},
+  {bf:'30"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+  {bf:'30"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:5050,rsh:5350,c2:5700,c2rsh:6000,polyv:5350,polyvc2:6000,fwb:6050,fwbrsh:6350},
+  {bf:'30"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2650,rsh:2800,c2:3000,c2rsh:3150,polyv:2800,polyvc2:3150,fwb:3150,fwbrsh:3300},
+  {bf:'30"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1600,rsh:1700,c2:1800,c2rsh:1850,polyv:1700,polyvc2:1850,fwb:1850,fwbrsh:1950},
+  {bf:'30"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4400,rsh:4700,c2:5050,c2rsh:5350,polyv:4700,polyvc2:5350,fwb:5400,fwbrsh:5700},
+  {bf:'30"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2300,rsh:2450,c2:2650,c2rsh:2800,polyv:2450,polyvc2:2800,fwb:2800,fwbrsh:2950},
+  {bf:'30"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+  {bf:'30"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6400,rsh:6850,c2:7400,c2rsh:7850,polyv:6850,polyvc2:7850,fwb:7900,fwbrsh:8350},
+  {bf:'33"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4600,rsh:4900,c2:5250,c2rsh:5550,polyv:4900,polyvc2:5550,fwb:5600,fwbrsh:5900},
+  {bf:'33"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2500,rsh:2650,c2:2850,c2rsh:3000,polyv:2650,polyvc2:3000,fwb:3000,fwbrsh:3150},
+  {bf:'33"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1500,rsh:1600,c2:1700,c2rsh:1750,polyv:1600,polyvc2:1750,fwb:1750,fwbrsh:1850},
+  {bf:'33"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:5050,rsh:5350,c2:5700,c2rsh:6000,polyv:5350,polyvc2:6000,fwb:6050,fwbrsh:6350},
+  {bf:'33"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2650,rsh:2800,c2:3000,c2rsh:3150,polyv:2800,polyvc2:3150,fwb:3150,fwbrsh:3300},
+  {bf:'33"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1650,rsh:1750,c2:1850,c2rsh:1900,polyv:1750,polyvc2:1900,fwb:1900,fwbrsh:2000},
+  {bf:'33"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4450,rsh:4750,c2:5100,c2rsh:5400,polyv:4750,polyvc2:5400,fwb:5450,fwbrsh:5750},
+  {bf:'33"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2350,rsh:2500,c2:2700,c2rsh:2850,polyv:2500,polyvc2:2850,fwb:2850,fwbrsh:3000},
+  {bf:'33"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+  {bf:'33"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6450,rsh:6900,c2:7450,c2rsh:7900,polyv:6900,polyvc2:7900,fwb:7950,fwbrsh:8400},
+  {bf:'36"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4650,rsh:4950,c2:5300,c2rsh:5600,polyv:4950,polyvc2:5600,fwb:5650,fwbrsh:5950},
+  {bf:'36"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2550,rsh:2700,c2:2900,c2rsh:3050,polyv:2700,polyvc2:3050,fwb:3050,fwbrsh:3200},
+  {bf:'36"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1500,rsh:1600,c2:1700,c2rsh:1750,polyv:1600,polyvc2:1750,fwb:1750,fwbrsh:1850},
+  {bf:'36"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:5100,rsh:5400,c2:5750,c2rsh:6050,polyv:5400,polyvc2:6050,fwb:6100,fwbrsh:6400},
+  {bf:'36"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2700,rsh:2850,c2:3050,c2rsh:3200,polyv:2850,polyvc2:3200,fwb:3200,fwbrsh:3350},
+  {bf:'36"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1650,rsh:1750,c2:1850,c2rsh:1900,polyv:1750,polyvc2:1900,fwb:1900,fwbrsh:2000},
+  {bf:'36"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4500,rsh:4800,c2:5150,c2rsh:5450,polyv:4800,polyvc2:5450,fwb:5500,fwbrsh:5800},
+  {bf:'36"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2350,rsh:2500,c2:2700,c2rsh:2850,polyv:2500,polyvc2:2850,fwb:2850,fwbrsh:3000},
+  {bf:'36"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1500,rsh:1600,c2:1700,c2rsh:1750,polyv:1600,polyvc2:1750,fwb:1750,fwbrsh:1850},
+  {bf:'36"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6500,rsh:6950,c2:7500,c2rsh:7950,polyv:6950,polyvc2:7950,fwb:8000,fwbrsh:8450},
+];
+
+const CURVES_PRICE = [
+  {desc:'90-Degree Tapered Curve',angle:'90',rsl:3500,rsh:3650,c2:3850,c2rsh:4000},
+  {desc:'60-Degree Tapered Curve',angle:'60',rsl:3000,rsh:3150,c2:3350,c2rsh:3500},
+  {desc:'45-Degree Tapered Curve',angle:'45',rsl:2500,rsh:2600,c2:2700,c2rsh:2750},
+  {desc:'30-Degree Tapered Curve',angle:'30',rsl:1750,rsh:1850,c2:1950,c2rsh:2000},
+];
+
+const MODOX_PRICE = [
+  {section:'24" and 30" Zones',model:'ModoX90 Transfer',bf15:11500,bf18:11750,bf21:12000,bf24:12250,bf27:12500},
+  {section:'24" and 30" Zones',model:'ModoX60',bf15:15500,bf18:15750,bf21:16000,bf24:16250,bf27:16500},
+  {section:'24" and 30" Zones',model:'ModoX30',bf15:16000,bf18:16250,bf21:16500,bf24:16750,bf27:17000},
+  {section:'36" Zone',model:'ModoX90 Transfer',bf15:12500,bf18:12750,bf21:13000,bf24:13250,bf27:13500},
+  {section:'36" Zone',model:'ModoX60',bf15:16500,bf18:16750,bf21:17000,bf24:17250,bf27:17500},
+  {section:'36" Zone',model:'ModoX30',bf15:17000,bf18:17250,bf21:17500,bf24:17750,bf27:18000},
+];
+
+const GATES_PRICE = [
+  {model:'Gate 36-24',bf15:7000,bf18:7125,bf21:7250,bf24:7375,bf27:7500,bf30:7625,bf33:7750,bf36:7875},
+  {model:'Gate 48-12',bf15:8000,bf18:8125,bf21:8250,bf24:8375,bf27:8500,bf30:8625,bf33:8750,bf36:8875},
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  ACCESSORIES DATA
+// ═══════════════════════════════════════════════════════════════
+const ACCESSORIES = [
+  {cat:"Guard Rail",part:"",desc:"FLIPRAIL GUARD RAIL Pair (Standard Photo Eye Locations) — 60\" 1¾\" Tall (2) 30\" Zone",price:250},
+  {cat:"Guard Rail",part:"",desc:"FLIPRAIL GUARD RAIL Pair (Standard Photo Eye Locations) — 72\" 1¾\" Tall (2) 36\" Zone",price:250},
+  {cat:"Guard Rail",part:"",desc:"FLIPRAIL GUARD RAIL Pair (Standard Photo Eye Locations) — 72\" 1¾\" Tall (3) 24\" Zone",price:250},
+  {cat:"Guard Rail",part:"",desc:"FLIPRAIL GUARD RAIL Channel w/o Photo Eyes — 60\" 1¾\" Tall",price:50},
+  {cat:"Guard Rail",part:"",desc:"FLIPRAIL GUARD RAIL Channel w/o Photo Eyes — 60\" 3\" Tall",price:100},
+  {cat:"Guard Rail",part:"",desc:"FLIPRAIL GUARD RAIL Channel w/o Photo Eyes — 72\" 1¾\" Tall",price:50},
+  {cat:"Guard Rail",part:"",desc:"FLIPRAIL GUARD RAIL Channel w/o Photo Eyes — 72\" 3\" Tall",price:100},
+  {cat:"Guard Rail",part:"",desc:"M Series Guard Rail (Flared Channel) — 60\"/72\" 6\" Tall",price:150},
+  {cat:"Guard Rail",part:"",desc:"M Series Guard Rail (Flared Channel) — 60\"/72\" 6\" Tall",price:200},
+  {cat:"Guard Rail",part:"",desc:"M Series Guard Rail (Flared Channel) — 60\"/72\" 18\" Tall",price:250},
+  {cat:"Guard Rail",part:"",desc:"M Series Guard Rail (Flared Channel) — 60\"/72\" 18\" Tall",price:300},
+  {cat:"Guard Rail",part:"",desc:"M Series Guard Rail (Channel) — 60\"/72\" 3\" Tall",price:50},
+  {cat:"Guard Rail",part:"",desc:"M Series Guard Rail (Channel) — 60\"/72\" 3\" Tall",price:100},
+  {cat:"Guard Rail",part:"",desc:"M Series Guard Rail (Channel) — 60\"/72\" 12\" Tall",price:150},
+  {cat:"Guard Rail",part:"",desc:"M Series Guard Rail (Channel) — 60\"/72\" 12\" Tall",price:200},
+  {cat:"Guard Rail",part:"",desc:"M Series Guard Rail (Channel) — 60\"/72\" 24\" Tall",price:300},
+  {cat:"Guard Rail",part:"",desc:"M Series Guard Rail (Channel) — 60\"/72\" 24\" Tall",price:400},
+  {cat:"Electrical Kit - ZPA",part:"CK-0100-0005",desc:"Above Frame Photo Eye Bracket Kit (ZPA)",price:250},
+  {cat:"Electrical Kit - ZPA",part:"CK-0200-0001",desc:"Above Frame Photo Eye Bracket Kit (ZPA) — Double",price:350},
+  {cat:"Electrical Kit - ZPA",part:"CK-0100-0013",desc:"G10 Block Kit (Bridge)",price:100},
+  {cat:"Electrical Kit - ZPA",part:"CK-0200-0002",desc:"G10 Block Kit (Bridge) — Double",price:450},
+  {cat:"Electrical Kit - ZPA",part:"CK-0100-0014",desc:"G10 Block Kit (Clamp)",price:100},
+  {cat:"Electrical Kit - ZPA",part:"CK-0200-0003",desc:"Cross Over Kit (X1) Left-Right Hand (ZPA)",price:50},
+  {cat:"Electrical Kit - ZPA",part:"CK-0100-0006",desc:"Cross Over Kit (X2) Left-Right Hand (ZPA)",price:750},
+  {cat:"Electrical Kit - ZPA",part:"CK-0100-0007",desc:"Black Power Cable (330')",price:600},
+  {cat:"Electrical Kit - ZPA",part:"CK-0100-0008",desc:"ZPA Photoeye Kit (In Frame)",price:150},
+  {cat:"Electrical Kit - ZPA",part:"CK-0100-0009",desc:"ZPA Photoeye Kit (Above Frame)",price:200},
+  {cat:"Electrical Kit - ZPA",part:"CK-0100-0010",desc:"ZPA Photoeye Kit (Adjustable)",price:250},
+  {cat:"Electrical Kit - ZPA",part:"CK-0100-0011",desc:"ZPA Photoeye Kit (Reflector)",price:100},
+  {cat:"Electrical Kit - ZPA",part:"CK-0100-0012",desc:"ZPA Photoeye Kit (Emitter)",price:100},
+  {cat:"Electrical Kit - Full Control",part:"CK-0600-0001",desc:"Start Eye Kit (ZPA)",price:400},
+  {cat:"Electrical Kit - Full Control",part:"CK-0600-0002",desc:"Start Eye Kit (Full Control)",price:500},
+  {cat:"Electrical Kit - Full Control",part:"CK-0600-0003",desc:"Line Full Eye Kit (Full Control)",price:550},
+  {cat:"Electrical Kit - Full Control",part:"CK-0600-0004",desc:"Line Full Eye Kit (ZPA)",price:450},
+  {cat:"Electrical Kit - Full Control",part:"CK-0600-0005",desc:"End Eye Kit (Full Control)",price:500},
+  {cat:"Electrical Kit - Full Control",part:"CK-0600-0006",desc:"End Eye Kit (ZPA)",price:400},
+  {cat:"Electrical Kit - Full Control",part:"CK-0600-0007",desc:"Yellow Network Cable (330')",price:400},
+  {cat:"Electrical Kit - Full Control",part:"CK-0600-0008",desc:"Curve Eye Kit (Full Control)",price:600},
+  {cat:"Electrical Kit - Full Control",part:"CK-0600-0009",desc:"Curve Eye Kit (ZPA)",price:500},
+  {cat:"Electrical Kit - Full Control",part:"CK-0600-0010",desc:"Drive Card Kit",price:150},
+  {cat:"Power Supply",part:"PS-0500-1000",desc:"120V 10 AMP PSE",price:1200},
+  {cat:"Power Supply",part:"PS-0500-1001",desc:"120V 20 AMP PSE",price:1500},
+  {cat:"Power Supply",part:"PS-0500-1002",desc:"120V 40 AMP PSE",price:1750},
+  {cat:"Power Supply",part:"PS-0500-1003",desc:"480V 80 AMP PSE",price:3200},
+  {cat:"Power Supply",part:"PS-0500-1004",desc:"480V 40 AMP PSE",price:2200},
+  {cat:"Power Supply",part:"CP-0600-1001",desc:"60 AMP Main Panel",price:59000},
+  {cat:"Support",part:"",desc:"Standard Support — 0–30\" TOS",price:150},
+  {cat:"Support",part:"",desc:"Standard Support — 31–42\" TOS",price:175},
+  {cat:"Support",part:"",desc:"Standard Support — 43–54\" TOS",price:200},
+  {cat:"Support",part:"",desc:"Standard Support — 55–66\" TOS",price:225},
+  {cat:"Support",part:"",desc:"Standard Support — 67–78\" TOS",price:250},
+  {cat:"Support",part:"",desc:"Standard Support — 79–90\" TOS",price:275},
+  {cat:"Support",part:"",desc:"Heavy Duty Support — 0–30\" TOS",price:200},
+  {cat:"Support",part:"",desc:"Heavy Duty Support — 31–42\" TOS",price:225},
+  {cat:"Mechanical Accessory",part:"HK-0500-0001",desc:"End Stop Kit — 15\"BF",price:75},
+  {cat:"Mechanical Accessory",part:"HK-0500-0002",desc:"End Stop Kit — 18\"BF",price:75},
+  {cat:"Mechanical Accessory",part:"HK-0500-0003",desc:"End Stop Kit — 21\"BF",price:75},
+  {cat:"Mechanical Accessory",part:"HK-0500-0004",desc:"End Stop Kit — 24\"BF",price:100},
+  {cat:"Mechanical Accessory",part:"HK-0500-0005",desc:"End Stop Kit — 27\"BF",price:100},
+  {cat:"Mechanical Accessory",part:"HK-0500-0006",desc:"End Stop Kit — 30\"BF",price:100},
+  {cat:"Mechanical Accessory",part:"HK-0500-0007",desc:"End Stop Kit — 33\"BF",price:125},
+  {cat:"Mechanical Accessory",part:"HK-0500-0008",desc:"End Stop Kit — 36\"BF",price:125},
+  {cat:"Mechanical Accessory",part:"HK-0500-0042",desc:"Belly Pan — 15\"BF 30\" Zone",price:75},
+  {cat:"Mechanical Accessory",part:"HK-0500-0043",desc:"Belly Pan — 15\"BF 36\" Zone",price:85},
+  {cat:"Mechanical Accessory",part:"HK-0500-0044",desc:"Belly Pan — 15\"BF 24\" Zone",price:65},
+  {cat:"Mechanical Accessory",part:"HK-0500-0045",desc:"Belly Pan — 18\"BF 30\" Zone",price:80},
+  {cat:"Mechanical Accessory",part:"HK-0500-0046",desc:"Belly Pan — 18\"BF 36\" Zone",price:90},
+  {cat:"Mechanical Accessory",part:"HK-0500-0047",desc:"Belly Pan — 18\"BF 24\" Zone",price:70},
+  {cat:"Mechanical Accessory",part:"HK-0500-0048",desc:"Belly Pan — 21\"BF 30\" Zone",price:85},
+  {cat:"Mechanical Accessory",part:"HK-0500-0049",desc:"Belly Pan — 21\"BF 36\" Zone",price:95},
+  {cat:"Mechanical Accessory",part:"HK-0500-0050",desc:"Belly Pan — 21\"BF 24\" Zone",price:75},
+  {cat:"Mechanical Accessory",part:"HK-0500-0051",desc:"Belly Pan — 24\"BF 30\" Zone",price:90},
+  {cat:"Mechanical Accessory",part:"HK-0500-0052",desc:"Belly Pan — 24\"BF 36\" Zone",price:100},
+  {cat:"Mechanical Accessory",part:"HK-0500-0053",desc:"Belly Pan — 24\"BF 24\" Zone",price:80},
+  {cat:"Mechanical Accessory",part:"HK-0500-0054",desc:"Belly Pan — 27\"BF 30\" Zone",price:95},
+  {cat:"Mechanical Accessory",part:"HK-0500-0055",desc:"Belly Pan — 27\"BF 36\" Zone",price:105},
+  {cat:"Mechanical Accessory",part:"HK-0500-0056",desc:"Belly Pan — 27\"BF 24\" Zone",price:85},
+  {cat:"Mechanical Accessory",part:"HK-0500-0057",desc:"Belly Pan — 30\"BF 30\" Zone",price:100},
+  {cat:"Mechanical Accessory",part:"HK-0500-0058",desc:"Belly Pan — 30\"BF 36\" Zone",price:110},
+  {cat:"Mechanical Accessory",part:"HK-0500-0059",desc:"Belly Pan — 30\"BF 24\" Zone",price:90},
+  {cat:"Mechanical Accessory",part:"HK-0500-0060",desc:"Belly Pan — 33\"BF 30\" Zone",price:105},
+  {cat:"Mechanical Accessory",part:"HK-0500-0061",desc:"Belly Pan — 33\"BF 36\" Zone",price:115},
+  {cat:"Mechanical Accessory",part:"HK-0500-0062",desc:"Belly Pan — 33\"BF 24\" Zone",price:95},
+  {cat:"Mechanical Accessory",part:"HK-0500-0063",desc:"Belly Pan — 36\"BF 30\" Zone",price:110},
+  {cat:"Mechanical Accessory",part:"HK-0500-0064",desc:"Belly Pan — 36\"BF 36\" Zone",price:120},
+  {cat:"Mechanical Accessory",part:"HK-0500-0065",desc:"Belly Pan — 36\"BF 24\" Zone",price:100},
+  {cat:"Mechanical Accessory",part:"HK-0500-0098",desc:"RSH-H 90 Bed Connection",price:150},
+  {cat:"Mechanical Accessory",part:"HK-0500-0099",desc:"Nose Plow Version 1",price:150},
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  MASTER CATALOG  (Sales Model lookup — data in catalog_data.js)
+// ═══════════════════════════════════════════════════════════════
+const CATALOG_BY_ENG   = new Map();   // engineering model → {sales, price, desc}
+const CATALOG_BY_SALES = new Map();   // sales model → [{eng, sales, price, desc}]
+const CATALOG_LIST     = [];
+(function loadCatalog() {
+  const raw = window.MODO_CATALOG_RAW || '';
+  if (!raw) { console.warn('catalog_data.js not loaded — Sales Models unavailable'); return; }
+  raw.split('\n').forEach(line => {
+    const [eng, sales, price, desc] = line.split('|');
+    const rec = { eng, sales, price: Number(price) || null, desc: desc || '' };
+    CATALOG_LIST.push(rec);
+    if (eng) CATALOG_BY_ENG.set(eng, rec);
+    if (!CATALOG_BY_SALES.has(sales)) CATALOG_BY_SALES.set(sales, []);
+    CATALOG_BY_SALES.get(sales).push(rec);
+  });
+})();
+function catalogFor(model) {
+  if (!model) return null;
+  return CATALOG_BY_ENG.get(String(model).trim().toUpperCase()) || null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODEL DEFINITIONS
+// ═══════════════════════════════════════════════════════════════
+
+// ── STRAIGHT ──
+const straightGroups = [
+  {key:"railType",label:"Rail Type",options:[
+    {code:"FL",desc:"Fliprail Roller Set Low"},{code:"FH",desc:"Fliprail Roller Set High"},
+    {code:"SL",desc:"Scale Bed Set Low"},{code:"SH",desc:"Scale Bed Set High"},{code:"HD",desc:"Heavy Duty Series"},
+  ]},
+  {key:"railLength",label:"Rail Length",options:[
+    {code:"144",desc:'144"'},{code:"120",desc:'120"'},{code:"096",desc:'96"'},{code:"072",desc:'72"'},
+    {code:"060",desc:'60"'},{code:"048",desc:'48"'},{code:"036",desc:'36"'},{code:"030",desc:'30"'},{code:"024",desc:'24"'},
+  ]},
+  {key:"power",label:"Power Type",options:[{code:"P",desc:"Powered"},{code:"G",desc:"Gravity"}]},
+  {key:"bf",label:"BF Length",options:[
+    {code:"15",desc:'15"'},{code:"18",desc:'18"'},{code:"21",desc:'21"'},{code:"24",desc:'24"'},
+    {code:"27",desc:'27"'},{code:"30",desc:'30"'},{code:"33",desc:'33"'},{code:"36",desc:'36"'},{code:"51",desc:'51"'},
+  ]},
+  {key:"rcd",label:"Roller Center Distance",options:[
+    {code:"C2",desc:'2"'},{code:"C3",desc:'3"'},{code:"C4",desc:'4"'},{code:"C6",desc:'6" (Belted)'},
+  ]},
+  {key:"zones",label:"# of Zones",options:[
+    {code:"0",desc:'0'},{code:"1",desc:'1'},{code:"2",desc:'2'},{code:"3",desc:'3'},
+    {code:"4",desc:'4'},{code:"5",desc:'5'},{code:"6",desc:'6'},
+  ]},
+  {key:"rollerType",label:"Roller Type",options:[
+    {code:"TG",desc:"Two Groove"},{code:"GR",desc:"Gravity Roller"},{code:"PV",desc:"Poly V"},
+    {code:"CH",desc:"Chain"},{code:"BI",desc:"Belted Incline"},{code:"BD",desc:"Belted Decline/Flat"},
+    {code:"VC",desc:"V Conform"},{code:"PO",desc:"POLY-O"},{code:"SR",desc:"Skew Right"},{code:"SL",desc:"Skew Left"},
+  ]},
+  {key:"zoneLength",label:"Zone Length",options:[
+    {code:"000",desc:'0"'},{code:"024",desc:'24"'},{code:"030",desc:'30"'},{code:"036",desc:'36"'},
+  ]},
+  {key:"controlHand",label:"Control Hand",options:[
+    {code:"LH",desc:"L.H. Controls"},{code:"RH",desc:"R.H. Controls"},{code:"NC",desc:"No Controls"},
+  ]},
+  {key:"rollerBrand",label:"Roller Brand",options:[
+    {code:"0",desc:"Any Available"},{code:"1",desc:"Interroll"},{code:"2",desc:"Pulse"},{code:"3",desc:"Itoh Denki"},{code:"4",desc:"Modoroller"},
+  ]},
+  {key:"controlProtocol",label:"Control Protocol",options:[
+    {code:"00",desc:"No Controls"},{code:"01",desc:"AS-i"},{code:"02",desc:"ZPA"},
+    {code:"03",desc:"ModoLink"},{code:"04",desc:"Numina"},{code:"05",desc:"KPI"},{code:"06",desc:"Pulse"},
+    {code:"07",desc:"Interroll Multi Control"},{code:"08",desc:"Interroll 2248"},
+  ]},
+  {key:"finish",label:"Finish Type",options:[
+    {code:"STD",desc:"Modoroll Grey"},{code:"RAL",desc:"Custom Color"},{code:"ESD",desc:"Anti-Static"},
+  ]},
+];
+
+// ── CURVE ──
+const curveGroups = [
+  {key:"module",label:"Module",options:[{code:"H",desc:"Hedra"},{code:"T",desc:"Tapered"}]},
+  {key:"rollerSet",label:"Roller Set",options:[{code:"L",desc:"Roller Set Low"},{code:"H",desc:"Roller Set High"}]},
+  {key:"angle",label:"Angle",options:[
+    {code:"30",desc:"30 Degree"},{code:"45",desc:"45 Degree"},{code:"60",desc:"60 Degree"},{code:"90",desc:"90 Degree"},
+  ]},
+  {key:"bf",label:"BF Length",options:[
+    {code:"15",desc:'15"'},{code:"18",desc:'18"'},{code:"21",desc:'21"'},{code:"24",desc:'24"'},
+    {code:"27",desc:'27"'},{code:"30",desc:'30"'},{code:"33",desc:'33"'},{code:"36",desc:'36"'},
+  ]},
+  {key:"rcd",label:"Roller Center Distance",options:[
+    {code:"C2",desc:'2" Centers (Poly-O required)'},{code:"C3",desc:'3" Centers'},
+  ]},
+  {key:"zones",label:"# of Zones",options:[
+    {code:"0",desc:'0'},{code:"1",desc:'1'},{code:"2",desc:'2'},{code:"3",desc:'3'},
+    {code:"4",desc:'4'},{code:"5",desc:'5'},{code:"6",desc:'6'},
+  ]},
+  {key:"rollerType",label:"Roller Type",options:[
+    {code:"TG",desc:"Two Groove"},{code:"PO",desc:"Poly-O"},{code:"GR",desc:"Gravity"},
+  ]},
+  {key:"radius",label:"Radius",options:[{code:"036",desc:'36"'}]},
+  {key:"controlHand",label:"Control Hand",options:[
+    {code:"LH",desc:"Left Hand Controls"},{code:"RH",desc:"Right Hand Controls"},{code:"NC",desc:"No Controls"},
+  ]},
+  {key:"rollerBrand",label:"Roller Brand",options:[
+    {code:"0",desc:"Any Available"},{code:"1",desc:"Interroll"},{code:"2",desc:"Pulse"},{code:"3",desc:"Itoh Denki"},{code:"4",desc:"Modoroller"},
+  ]},
+  {key:"controlProtocol",label:"Control Type",options:[
+    {code:"00",desc:"No Controls"},{code:"01",desc:"AS-i"},{code:"02",desc:"ZPA"},
+    {code:"03",desc:"ModoLink"},{code:"04",desc:"Numina"},{code:"05",desc:"KPI"},{code:"06",desc:"Pulse"},
+    {code:"07",desc:"Interroll Multi Control"},{code:"08",desc:"Interroll 2248"},
+  ]},
+  {key:"finish",label:"Finish Type",options:[
+    {code:"STD",desc:"Modoroll Grey"},{code:"RAL",desc:"Custom Color"},{code:"ESD",desc:"Anti-Static"},
+  ]},
+];
+
+// ── DIVERT ──
+const divertGroups = [
+  {key:"module",label:"Module Type",options:[
+    {code:"DW",desc:"Pop-up Wheel Divert (ModoX)"},{code:"MG",desc:"Merge"},{code:"DS",desc:"ModoSort"},
+  ]},
+  {key:"bf",label:"BF Length",options:[
+    {code:"15",desc:'15"'},{code:"18",desc:'18"'},{code:"21",desc:'21"'},{code:"24",desc:'24"'},{code:"27",desc:'27"'},
+  ]},
+  {key:"direction",label:"Direction",options:[
+    {code:"L",desc:"Package to/from Left"},{code:"R",desc:"Package to/from Right"},{code:"B",desc:"Bi-Directional"},
+  ]},
+  {key:"zoneLength",label:"Zone Length",options:[{code:"024",desc:'24"'},{code:"030",desc:'30"'},{code:"036",desc:'36"'}]},
+  {key:"rcd",label:"Roller Center Distance",options:[
+    {code:"C2",desc:'2"'},{code:"C3",desc:'3"'},
+  ]},
+  {key:"rollerType",label:"Roller Type",options:[
+    {code:"TG",desc:"Two Groove (O-Band)"},{code:"PV",desc:"Poly V"},
+  ]},
+  {key:"dischargeAngle",label:"Discharge Angle",options:[
+    {code:"30",desc:"30° (ModoX30 / ModoSort30)"},{code:"60",desc:"60° (ModoX60 / ModoSort60)"},
+  ]},
+  {key:"controlHand",label:"Control Hand",options:[
+    {code:"L",desc:"L.H. Controls"},{code:"R",desc:"R.H. Controls"},{code:"N",desc:"No Controls"},
+  ]},
+  {key:"brand",label:"Roller Brand",options:[
+    {code:"0",desc:"Any Available"},{code:"1",desc:"Interroll"},{code:"2",desc:"Pulse"},{code:"3",desc:"Itoh Denki"},{code:"4",desc:"Modoroller"},
+  ]},
+  {key:"protocol",label:"Control Protocol",options:[
+    {code:"00",desc:"No Controls"},{code:"01",desc:"AS-i"},{code:"02",desc:"ZPA"},
+    {code:"03",desc:"ModoLink"},{code:"04",desc:"Numina"},{code:"05",desc:"KPI"},{code:"06",desc:"Pulse"},
+    {code:"07",desc:"Interroll Multi Control"},{code:"08",desc:"Interroll 2248"},
+  ]},
+  {key:"finish",label:"Finish Type",options:[
+    {code:"STD",desc:"Modoroll Grey"},{code:"RAL",desc:"Custom Color"},{code:"ESD",desc:"Anti-Static"},
+  ]},
+];
+
+// ── TRANSFER ──
+const transferGroups = [
+  {key:"module",label:"Module Type",options:[{code:"MX",desc:"ModoX90"},{code:"MS",desc:"ModoSort90"}]},
+  {key:"bf",label:"BF Length",options:[
+    {code:"15",desc:'15"'},{code:"18",desc:'18"'},{code:"21",desc:'21"'},{code:"24",desc:'24"'},{code:"27",desc:'27"'},
+  ]},
+  {key:"zone",label:"Zone Length",options:[{code:"24",desc:'24"'},{code:"30",desc:'30"'},{code:"36",desc:'36"'}]},
+  {key:"direction",label:"Direction",options:[
+    {code:"R",desc:"Package to/from Right"},{code:"L",desc:"Package to/from Left"},{code:"B",desc:"Bi-Directional"},
+  ]},
+  {key:"controlHand",label:"Control Hand",options:[
+    {code:"L",desc:"L.H. Controls"},{code:"R",desc:"R.H. Controls"},{code:"N",desc:"No Controls"},
+  ]},
+  {key:"brand",label:"Roller Brand",options:[
+    {code:"0",desc:"Any Available"},{code:"1",desc:"Interroll"},{code:"2",desc:"Pulse"},{code:"3",desc:"Itoh Denki"},{code:"4",desc:"Modoroller"},
+  ]},
+  {key:"protocol",label:"Control Protocol",options:[
+    {code:"00",desc:"No Controls"},{code:"01",desc:"AS-i"},{code:"02",desc:"ZPA"},
+    {code:"03",desc:"ModoLink"},{code:"04",desc:"Numina"},{code:"05",desc:"KPI"},{code:"06",desc:"Pulse"},{code:"07",desc:"Interroll Multi Control"},{code:"08",desc:"Interroll 2248"},{code:"77",desc:"Hybrid/Custom"},
+  ]},
+  {key:"finish",label:"Finish Type",options:[
+    {code:"STD",desc:"Modoroll Grey"},{code:"RAL",desc:"Custom Color"},{code:"ESD",desc:"Anti-Static"},
+  ]},
+];
+
+// ── GATE ──
+const gateGroups = [
+  {key:"module",label:"Gate Type",options:[
+    {code:"GL",desc:"Gate Roller Set Low (RSL)"},{code:"GH",desc:"Gate Roller Set High (RSH)"},
+  ]},
+  {key:"arm",label:"Arm Length",options:[{code:"36",desc:'36"'},{code:"48",desc:'48"'}]},
+  {key:"tangent",label:"Tangent Length",options:[{code:"12",desc:'12"'},{code:"24",desc:'24"'},{code:"36",desc:'36"'}]},
+  {key:"bf",label:"BF Length",options:[
+    {code:"15",desc:'15"'},{code:"18",desc:'18"'},{code:"21",desc:'21"'},{code:"24",desc:'24"'},
+    {code:"27",desc:'27"'},{code:"30",desc:'30"'},{code:"33",desc:'33"'},{code:"36",desc:'36"'},
+  ]},
+  {key:"rcd",label:"Roller Center Distance",options:[
+    {code:"C2",desc:'2"'},{code:"C3",desc:'3"'},{code:"C4",desc:'4"'},
+  ]},
+  {key:"rollerType",label:"Roller Type",options:[
+    {code:"TG",desc:"Two Groove"},{code:"PV",desc:"Poly V"},{code:"GR",desc:"Gravity"},
+  ]},
+  {key:"zones",label:"# of Zones",options:[
+    {code:"1",desc:'1'},{code:"2",desc:'2'},{code:"3",desc:'3'},{code:"4",desc:'4'},
+  ]},
+  {key:"controlHand",label:"Control Hand",options:[
+    {code:"L",desc:"L.H. Controls"},{code:"R",desc:"R.H. Controls"},{code:"N",desc:"No Controls"},
+  ]},
+  {key:"brand",label:"Roller Brand",options:[
+    {code:"0",desc:"Any Available"},{code:"1",desc:"Interroll"},{code:"2",desc:"Pulse"},{code:"3",desc:"Itoh Denki"},{code:"4",desc:"Modoroller"},
+  ]},
+  {key:"protocol",label:"Control Protocol",options:[
+    {code:"00",desc:"No Controls"},{code:"01",desc:"AS-i"},{code:"02",desc:"ZPA"},
+    {code:"03",desc:"ModoLink"},{code:"04",desc:"Numina"},{code:"05",desc:"KPI"},{code:"06",desc:"Pulse"},
+    {code:"07",desc:"Interroll Multi Control"},{code:"08",desc:"Interroll 2248"},
+  ]},
+  {key:"finish",label:"Finish Type",options:[
+    {code:"STD",desc:"Modoroll Grey"},{code:"RAL",desc:"Custom Color"},{code:"ESD",desc:"Anti-Static"},
+  ]},
+];
+
+// ── TANGENT ──
+const tangentGroups = [
+  {key:"railType",label:"Rail Type",options:[
+    {code:"FL",desc:"Fliprail Roller Set Low"},{code:"FH",desc:"Fliprail Roller Set High"},
+  ]},
+  {key:"length",label:"Length",options:[
+    {code:"003",desc:'3"'},{code:"006",desc:'6"'},{code:"009",desc:'9"'},{code:"012",desc:'12"'},{code:"018",desc:'18"'},
+  ]},
+  {key:"power",label:"Power Type",options:[
+    {code:"P",desc:"Powered"},{code:"U",desc:"Un-Powered"},{code:"G",desc:"Gravity"},
+  ]},
+  {key:"bf",label:"BF Length",options:[
+    {code:"15",desc:'15"'},{code:"18",desc:'18"'},{code:"21",desc:'21"'},{code:"24",desc:'24"'},
+    {code:"27",desc:'27"'},{code:"30",desc:'30"'},{code:"33",desc:'33"'},{code:"36",desc:'36"'},
+  ]},
+  {key:"rollerType",label:"Roller Type",options:[
+    {code:"TG",desc:"Two Groove"},{code:"GR",desc:"Gravity"},{code:"PV",desc:"Poly V"},
+  ]},
+  {key:"rollerBrand",label:"Roller Brand",options:[
+    {code:"0",desc:"Any Available"},{code:"1",desc:"Interroll"},{code:"2",desc:"Pulse"},{code:"3",desc:"Itoh Denki"},{code:"4",desc:"Modoroller"},
+  ]},
+  {key:"finish",label:"Finish Type",options:[
+    {code:"STD",desc:"Modoroll Grey"},{code:"RAL",desc:"Custom Color"},{code:"ESD",desc:"Anti-Static"},
+  ]},
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  GENERIC BUILDER RENDERER
+// ═══════════════════════════════════════════════════════════════
+const builderStates = {straight:{},curve:{},divert:{},transfer:{},gate:{},tangent:{}};
+
+function renderBuilder(type, groups) {
+  const container = document.getElementById(type + '-builder');
+  const legendEl  = document.getElementById(type + '-legend');
+  groups.forEach(g => {
+    const field = document.createElement('div');
+    field.className = 'field';
+    field.innerHTML = `
+      <label for="${type}-${g.key}">${g.label}</label>
+      <select id="${type}-${g.key}">
+        <option value="">— Select —</option>
+        ${g.options.map(o=>`<option value="${o.code}">${o.code} — ${o.desc}</option>`).join('')}
+      </select>`;
+    container.appendChild(field);
+    field.querySelector('select').addEventListener('change', e => {
+      builderStates[type][g.key] = e.target.value;
+      applyRules(type);
+      updatePreview(type);
+    });
+    if (legendEl) {
+      const card = document.createElement('div');
+      card.className = 'legend-card';
+      card.innerHTML = `<strong>${g.label}</strong><pre>${g.options.map(o=>`${o.code} = ${o.desc}`).join('\n')}</pre>`;
+      legendEl.appendChild(card);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BUSINESS RULES
+// ═══════════════════════════════════════════════════════════════
+function applyRules(type) {
+  const s = builderStates[type];
+  if (type === 'straight') {
+    if (s.power === 'G') {
+      s.controlHand = 'NC'; s.rollerBrand = '0'; s.controlProtocol = '00';
+      setSelect(type,'controlHand','NC'); setSelect(type,'rollerBrand','0'); setSelect(type,'controlProtocol','00');
+    }
+  }
+  if (type === 'curve') {
+    if (s.rcd === 'C2') { s.rollerType = 'PO'; setSelect(type,'rollerType','PO'); }
+    if (s.rollerType === 'GR') {
+      s.controlHand = 'NC'; s.controlProtocol = '00';
+      setSelect(type,'controlHand','NC'); setSelect(type,'controlProtocol','00');
+    }
+  }
+}
+
+function setSelect(type, key, val) {
+  const el = document.getElementById(type + '-' + key);
+  if (el) el.value = val;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODEL CODE BUILDERS
+// ═══════════════════════════════════════════════════════════════
+function buildCode(type) {
+  const v = k => builderStates[type][k] || '';
+  switch(type) {
+    case 'straight': {
+      const left  = `${v('railType')}${v('railLength')}${v('power')}${v('bf')}${v('rcd')}`;
+      const mid   = `${v('zones')}${v('rollerType')}${v('zoneLength')}`;
+      const ct    = v('rollerBrand') + v('controlProtocol');
+      const right = `${v('controlHand')}${ct}${v('finish')}`;
+      return (left||mid||right) ? `${left}-${mid}-${right}`.replace(/--+/g,'-').replace(/^-|-$/g,'') : '—';
+    }
+    case 'curve': {
+      const left  = `${v('module')}${v('rollerSet')}${v('angle')}${v('bf')}${v('rcd')}`;
+      const mid   = `${v('zones')}${v('rollerType')}${v('radius')}`;
+      const right = `${v('controlHand')}${v('rollerBrand')}${v('controlProtocol')}${v('finish')}`;
+      return (left.replace(/-/g,'')||mid||right) ? `${left}-${mid}-${right}` : '—';
+    }
+    case 'divert': {
+      const left  = `${v('module')}${v('bf')}${v('direction')}${v('zoneLength')}${v('rcd')}`;
+      const right = `${v('rollerType')}${v('dischargeAngle')}${v('controlHand')}${v('brand')}${v('protocol')}${v('finish')}`;
+      return (left||right) ? `${left}-${right}`.replace(/--+/g,'-').replace(/^-|-$/g,'') : '—';
+    }
+    case 'transfer': {
+      const left  = `${v('module')}${v('bf')}${v('zone')}${v('direction')}`;
+      const right = `${v('controlHand')}${v('brand')}${v('protocol')}${v('finish')}`;
+      return (left||right) ? `${left}-${right}` : '—';
+    }
+    case 'gate': {
+      const left  = `${v('module')}${v('arm')}${v('tangent')}`;
+      const mid   = `${v('bf')}${v('rcd')}${v('rollerType')}${v('zones')}`;
+      const right = `${v('controlHand')}${v('brand')}${v('protocol')}${v('finish')}`;
+      return (left||mid||right) ? `${left}-${mid}-${right}`.replace(/--+/g,'-').replace(/^-|-$/g,'') : '—';
+    }
+    case 'tangent': {
+      const left  = `${v('railType')}${v('length')}${v('power')}${v('bf')}`;
+      const mid   = v('rollerType');
+      const right = `${v('rollerBrand')}${v('finish')}`;
+      return (left||mid||right) ? `${left}-${mid}-${right}`.replace(/--+/g,'-').replace(/^-|-$/g,'') : '—';
+    }
+  }
+  return '—';
+}
+
+function buildDesc(type) {
+  const v = k => builderStates[type][k] || '';
+  const getD = (groups, key, code) => groups.find(g=>g.key===key)?.options.find(o=>o.code===code)?.desc || '';
+  switch(type) {
+    case 'straight': {
+      const g = straightGroups;
+      const rt = getD(g,'railType',v('railType')); const rl = getD(g,'railLength',v('railLength'));
+      const pw = getD(g,'power',v('power')); const bf = v('bf'); const rcd = getD(g,'rcd',v('rcd'));
+      const zn = v('zones'); const rt2 = getD(g,'rollerType',v('rollerType')); const zl = getD(g,'zoneLength',v('zoneLength'));
+      const ch = getD(g,'controlHand',v('controlHand')); const br = getD(g,'rollerBrand',v('rollerBrand'));
+      const cp = getD(g,'controlProtocol',v('controlProtocol')); const fn = getD(g,'finish',v('finish'));
+      const parts = [rt,rl&&`${rl} Rail`,pw,bf&&`${bf}"BF`,rcd&&`${rcd} Centers`,zn&&`${zn} Zone`,rt2,zl&&`${zl} Zone Length`,ch,br,cp,fn].filter(Boolean);
+      return parts.join(' — ') || '—';
+    }
+    case 'curve': {
+      const g = curveGroups;
+      const parts = [
+        getD(g,'module',v('module')), getD(g,'rollerSet',v('rollerSet')),
+        v('angle')&&`${v('angle')}°`, v('bf')&&`${v('bf')}"BF`,
+        getD(g,'rcd',v('rcd')), v('zones')&&`${v('zones')} Zone`,
+        getD(g,'rollerType',v('rollerType')), getD(g,'radius',v('radius'))&&`R${v('radius')}"`,
+        getD(g,'controlHand',v('controlHand')), getD(g,'rollerBrand',v('rollerBrand')),
+        getD(g,'controlProtocol',v('controlProtocol')), getD(g,'finish',v('finish')),
+      ].filter(Boolean);
+      return parts.join(' — ') || '—';
+    }
+    case 'transfer': {
+      const g = transferGroups;
+      const parts = [
+        getD(g,'module',v('module')), v('bf')&&`${v('bf')}"BF`, v('zone')&&`${v('zone')}" Zone`,
+        getD(g,'direction',v('direction')), getD(g,'controlHand',v('controlHand')),
+        getD(g,'brand',v('brand')), getD(g,'protocol',v('protocol')), getD(g,'finish',v('finish')),
+      ].filter(Boolean);
+      return parts.join(' — ') || '—';
+    }
+    case 'gate': {
+      const g = gateGroups;
+      const parts = [
+        getD(g,'module',v('module')), v('arm')&&`${v('arm')}" Arm`, v('tangent')&&`${v('tangent')}" Tangent`,
+        v('bf')&&`${v('bf')}"BF`, getD(g,'rcd',v('rcd')), getD(g,'rollerType',v('rollerType')),
+        v('zones')&&`${v('zones')} Zone`, getD(g,'controlHand',v('controlHand')),
+        getD(g,'brand',v('brand')), getD(g,'protocol',v('protocol')), getD(g,'finish',v('finish')),
+      ].filter(Boolean);
+      return parts.join(' — ') || '—';
+    }
+    case 'divert': {
+      const g = divertGroups;
+      const mod = v('module'); const da = parseInt(v('dischargeAngle')) || 0;
+      let modName = '';
+      if (mod === 'DW') modName = da === 60 ? 'ModoX60' : (da === 30 ? 'ModoX30' : 'Pop-up Wheel Divert');
+      else if (mod === 'DS') modName = da === 60 ? 'ModoSort60' : (da === 30 ? 'ModoSort30' : 'ModoSort');
+      else modName = getD(g,'module',mod);
+      const parts = [
+        modName, v('bf')&&`${v('bf')}"BF`, getD(g,'direction',v('direction')),
+        v('zoneLength')&&`${parseInt(v('zoneLength'))}" Zone`, getD(g,'rcd',v('rcd')), getD(g,'rollerType',v('rollerType')),
+        getD(g,'controlHand',v('controlHand')),
+        getD(g,'brand',v('brand')), getD(g,'protocol',v('protocol')), getD(g,'finish',v('finish')),
+      ].filter(Boolean);
+      return parts.join(' — ') || '—';
+    }
+    case 'tangent': {
+      const g = tangentGroups;
+      const parts = [
+        getD(g,'railType',v('railType')), v('length')&&`${v('length')}" Length`,
+        getD(g,'power',v('power')), v('bf')&&`${v('bf')}"BF`,
+        getD(g,'rollerType',v('rollerType')), getD(g,'rollerBrand',v('rollerBrand')), getD(g,'finish',v('finish')),
+      ].filter(Boolean);
+      return parts.join(' — ') || '—';
+    }
+  }
+  return '—';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PRICE LOOKUP
+// ═══════════════════════════════════════════════════════════════
+function lookupPrice(type) {
+  // Catalog list price wins whenever the built number is in the master catalog
+  const cat = catalogFor(buildCode(type));
+  if (cat && cat.price) return cat.price;
+  const v = k => builderStates[type][k] || '';
+  if (type === 'straight') {
+    const bf = v('bf') + '"BF'; const rl = parseInt(v('railLength')) + '"'; const zl = v('zoneLength');
+    const zones = parseInt(v('zones')) || 0;
+    const rcd = v('rcd'); const rt = v('rollerType');
+    // Map roller type + rcd to price column
+    // rsl = Roller Set Low (TG/GR/CH/BI/BD/VC/SR/SL with C3/C4)
+    // rsh = Roller Set High (FH/SH rail types)
+    // c2  = 2" centers (PO with C2)
+    // polyv = Poly V (PV)
+    // fwb = Full-width belt (BI/BD)
+    let col = 'rsl';
+    if (rt === 'PV') col = 'polyv';
+    else if (rt === 'BI' || rt === 'BD') col = 'fwb';
+    else if (rcd === 'C2') col = 'c2';
+    // Adjust for High roller set rail types
+    const railT = v('railType');
+    if (railT === 'FH' || railT === 'SH') {
+      if (col === 'rsl') col = 'rsh';
+      else if (col === 'c2') col = 'c2rsh';
+      else if (col === 'polyv') col = 'polyvc2';
+      else if (col === 'fwb') col = 'fwbrsh';
+    }
+    const row = STRAIGHTS_PRICE.find(r => r.bf === bf && r.rail === rl && r.zones === zones);
+    if (row && row[col] !== undefined) return row[col];
+    // Fallback: try rsl if specific column missing
+    if (row && row.rsl) return row.rsl;
+    return null;
+  }
+  if (type === 'curve') {
+    const angle = v('angle'); const rcd = v('rcd'); const rs = v('rollerSet');
+    const row = CURVES_PRICE.find(r => r.angle === angle);
+    if (!row) return null;
+    if (rcd === 'C2') return rs === 'H' ? row.c2rsh : row.c2;
+    return rs === 'H' ? row.rsh : row.rsl;
+  }
+  if (type === 'divert') {
+    const mod = v('module'); const da = v('dischargeAngle'); const bf = v('bf'); const zl = v('zoneLength');
+    const bfKey = 'bf' + bf;
+    const section = zl === '036' ? '36" Zone' : '24" and 30" Zones';
+    if (mod === 'DW' || mod === 'DS') {
+      const mxName = da === '60' ? 'ModoX60' : 'ModoX30';
+      const row = MODOX_PRICE.find(r => r.model === mxName && r.section === section);
+      if (!row || !row[bfKey]) return null;
+      if (mod === 'DS') return Math.round(row[bfKey] * 1.30 / 50) * 50;
+      return row[bfKey];
+    }
+    if (mod === 'MG') {
+      // Merge = 3 × single-zone FH bed (rsh or c2rsh) + $3800 floating spur
+      const rcd = v('rcd');
+      const bedBf = bf + '"BF';
+      const bedRail = parseInt(zl) + '"';
+      const bedRow = STRAIGHTS_PRICE.find(r => r.bf === bedBf && r.rail === bedRail && r.zones === 1);
+      if (!bedRow) return null;
+      const bedPrice = rcd === 'C2' ? bedRow.c2rsh : bedRow.rsh;
+      return 3 * bedPrice + 3800;
+    }
+    return null;
+  }
+  if (type === 'transfer') {
+    const mod = v('module'); const bf = v('bf'); const zone = v('zone');
+    const bfKey = 'bf' + bf;
+    let modelName = mod === 'MX' ? 'ModoX90 Transfer' : 'ModoSort90';
+    const section = zone === '36' ? '36" Zone' : '24" and 30" Zones';
+    const row = MODOX_PRICE.find(r => r.model === modelName && r.section.startsWith(section.split(' ')[0]));
+    if (row && row[bfKey]) return row[bfKey];
+    return null;
+  }
+  if (type === 'gate') {
+    const arm = v('arm'); const bf = v('bf');
+    const modelName = arm === '48' ? 'Gate 48-12' : 'Gate 36-24';
+    const bfKey = 'bf' + bf;
+    const row = GATES_PRICE.find(r => r.model === modelName);
+    if (row && row[bfKey]) return row[bfKey];
+    return null;
+  }
+  return null;
+}
+
+function fmtPrice(p) {
+  if (!p) return '';
+  return '$' + p.toLocaleString();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UPDATE PREVIEW
+// ═══════════════════════════════════════════════════════════════
+function updatePreview(type) {
+  const code  = buildCode(type);
+  const desc  = buildDesc(type);
+  const price = lookupPrice(type);
+  const codeEl  = document.getElementById(type + '-code');
+  const descEl  = document.getElementById(type + '-desc');
+  const priceEl = document.getElementById(type + '-price');
+  if (codeEl) codeEl.textContent = code;
+  if (descEl) descEl.textContent = desc;
+  if (priceEl) priceEl.textContent = price ? 'List Price: ' + fmtPrice(price) : '';
+  // Sales Model (from master catalog)
+  if (codeEl) {
+    let salesEl = document.getElementById(type + '-sales');
+    if (!salesEl) {
+      salesEl = document.createElement('div');
+      salesEl.id = type + '-sales';
+      salesEl.className = 'sales-display';
+      codeEl.insertAdjacentElement('afterend', salesEl);
+    }
+    const cat = catalogFor(code);
+    if (cat) {
+      salesEl.innerHTML = `Sales Model: <b>${cat.sales}</b>`;
+      salesEl.classList.remove('none');
+    } else {
+      salesEl.textContent = code && code !== '—' ? 'Sales Model: not in catalog' : '';
+      salesEl.classList.add('none');
+    }
+  }
+}
+
+function clearBuilder(type) {
+  builderStates[type] = {};
+  const container = document.getElementById(type + '-builder');
+  container.querySelectorAll('select').forEach(s => s.value = '');
+  updatePreview(type);
+  const warnEl = document.getElementById(type + '-warn');
+  if (warnEl) warnEl.textContent = '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BASKET
+// ═══════════════════════════════════════════════════════════════
+const basket = [];
+
+function addToBasket(type) {
+  const code  = buildCode(type);
+  const desc  = getDescriptionDxf(code);
+  const price = lookupPrice(type);
+  if (!code || code === '—') return;
+  const existing = basket.find(i => i.model === code);
+  const cat = catalogFor(code);
+  if (existing) { existing.qty++; }
+  else { basket.push({model: code, sales: cat ? cat.sales : '', desc, price, qty: 1, type}); }
+  renderBasket();
+  renderBomPreview();
+}
+function addKitToBasket(part, desc, price) {
+  const key = part || desc;
+  const existing = basket.find(i => i.model === key);
+  if (existing) { existing.qty++; }
+  else { basket.push({model: part || '—', desc, price, qty: 1, type: 'kit'}); }
+  renderBasket();
+  renderBomPreview();
+}
+function changeQty(idx, delta) {
+  basket[idx].qty = Math.max(0, basket[idx].qty + delta);
+  if (basket[idx].qty === 0) basket.splice(idx, 1);
+  renderBasket();
+  renderBomPreview();
+}
+function removeItem(idx) { basket.splice(idx, 1); renderBasket(); renderBomPreview(); }
+function clearBasket()   { basket.length = 0; renderBasket(); renderBomPreview(); }
+
+function renderBasket() {
+  const tbody = document.getElementById('basket-body');
+  if (!basket.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="muted" style="padding:14px;">Basket is empty.</td></tr>';
+    return;
+  }
+  let total = 0;
+  tbody.innerHTML = basket.map((it, i) => {
+    const ext = it.price ? it.price * it.qty : null;
+    if (ext) total += ext;
+    return `<tr>
+      <td>
+        <div class="qty-controls">
+          <button class="qty-btn" onclick="changeQty(${i},-1)">−</button>
+          <span class="qty-val">${it.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${i},1)">+</button>
+        </div>
+      </td>
+      <td style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;">${it.model}</td>
+      <td class="sales-cell">${it.sales || '<span class="muted" style="font-weight:400;">—</span>'}</td>
+      <td style="font-size:13px;">${it.desc}</td>
+      <td class="price-cell">${it.price ? fmtPrice(it.price) : '—'}</td>
+      <td class="price-cell">${ext ? fmtPrice(ext) : '—'}</td>
+      <td><button class="remove-btn" onclick="removeItem(${i})" title="Remove">✕</button></td>
+    </tr>`;
+  }).join('');
+  // Total row
+  tbody.innerHTML += `<tr style="background:#f9fbe7;">
+    <td colspan="5" style="text-align:right;font-weight:800;padding:10px 12px;border-top:2px solid #ccc;">TOTAL</td>
+    <td class="total-cell" style="border-top:2px solid #ccc;">${total ? fmtPrice(total) : '—'}</td>
+    <td style="border-top:2px solid #ccc;"></td>
+  </tr>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOM PREVIEW
+// ═══════════════════════════════════════════════════════════════
+function renderBomPreview() {
+  const tbody  = document.getElementById('bom-preview-body');
+  if (!tbody) return;
+  const dressed = document.getElementById('opt-dress') && document.getElementById('opt-dress').checked;
+  if (!basket.length) {
+    tbody.innerHTML = '<tr class="bom-empty"><td colspan="17" style="padding:14px;">Add items to the basket to see BOM preview.</td></tr>';
+    return;
+  }
+  // Build BOM rows from basket
+  const bomRows = [];
+  basket.forEach(it => {
+    const type = identifyType(it.model);
+    if (type !== 'unknown') {
+      // Conveyor model — derive full BOM row
+      const row = deriveRow(it.model, it.qty, dressed);
+      row.listPrice = it.price;
+      row.sales = it.sales || '';
+      if (it.price) row.totalPrice = it.price * it.qty;
+      bomRows.push(row);
+    } else {
+      // Kit / accessory — simple row
+      bomRows.push({
+        qty: it.qty, fr: it.model, model: '', sales: it.sales || '', desc: it.desc,
+        listPrice: it.price, length: '', _lenIn: 0,
+        zones: '', carriers: '', cards: '', grail: '',
+        flatBlack: '', _fbIn: 0,
+        supports: '', covers: '', obands: '', watts: 0,
+        totalPrice: it.price ? it.price * it.qty : null
+      });
+    }
+  });
+  // Render rows
+  let html = bomRows.map(r => {
+    const lp = r.listPrice ? fmtPrice(r.listPrice) : '—';
+    const tp = r.totalPrice ? fmtPrice(r.totalPrice) : '—';
+    return `<tr>
+      <td>${r.qty}</td>
+      <td class="bom-model">${r.fr || '—'}</td>
+      <td class="bom-model">${r.model || ''}</td>
+      <td class="bom-model" style="color:#1565c0;font-weight:700;">${r.sales || '—'}</td>
+      <td class="bom-desc">${r.desc || ''}</td>
+      <td class="bom-price">${lp}</td>
+      <td>${r.length || ''}</td>
+      <td>${r.zones !== '' ? r.zones : ''}</td>
+      <td>${r.carriers !== '' ? r.carriers : ''}</td>
+      <td>${r.cards !== '' ? r.cards : ''}</td>
+      <td>${r.grail !== '' ? r.grail : ''}</td>
+      <td>${r.flatBlack || ''}</td>
+      <td>${r.supports !== '' ? r.supports : ''}</td>
+      <td>${r.covers !== '' ? r.covers : ''}</td>
+      <td>${r.obands !== '' ? r.obands : ''}</td>
+      <td>${typeof r.watts === 'number' ? r.watts : ''}</td>
+      <td class="bom-price">${tp}</td>
+    </tr>`;
+  }).join('');
+  // Totals row
+  const totalLenIn  = bomRows.reduce((a,r) => a + (r._lenIn  || 0), 0);
+  const totalFbIn   = bomRows.reduce((a,r) => a + (r._fbIn   || 0), 0);
+  const totalWatts  = bomRows.reduce((a,r) => a + (typeof r.watts    === 'number' ? r.watts    : 0), 0);
+  const totalZones  = bomRows.reduce((a,r) => a + (typeof r.zones    === 'number' ? r.zones    : 0), 0);
+  const totalCards  = bomRows.reduce((a,r) => a + (typeof r.cards    === 'number' ? r.cards    : 0), 0);
+  const totalGrail  = bomRows.reduce((a,r) => a + (typeof r.grail    === 'number' ? r.grail    : 0), 0);
+  const totalSupp   = bomRows.reduce((a,r) => a + (typeof r.supports === 'number' ? r.supports : 0), 0);
+  const totalCov    = bomRows.reduce((a,r) => a + (typeof r.covers   === 'number' ? r.covers   : 0), 0);
+  const totalOb     = bomRows.reduce((a,r) => a + (typeof r.obands   === 'number' ? r.obands   : 0), 0);
+  const totalCarr   = bomRows.reduce((a,r) => a + (typeof r.carriers === 'number' ? r.carriers : 0), 0);
+  const totalQty    = bomRows.reduce((a,r) => a + r.qty, 0);
+  const totalPrice  = bomRows.reduce((a,r) => a + (typeof r.totalPrice === 'number' ? r.totalPrice : 0), 0);
+  html += `<tr class="bom-total-row">
+    <td>${totalQty}</td><td colspan="4" style="text-align:right;font-weight:800;">TOTAL</td>
+    <td></td>
+    <td>${roundFt(totalLenIn)}'</td>
+    <td>${totalZones}</td><td>${totalCarr}</td><td>${totalCards}</td><td>${totalGrail}</td>
+    <td>${ceilFt(totalFbIn)}'</td>
+    <td>${totalSupp}</td><td>${totalCov}</td><td>${totalOb}</td><td>${totalWatts}</td>
+    <td class="bom-price">${totalPrice ? fmtPrice(totalPrice) : '—'}</td>
+  </tr>`;
+  // PSE row
+  const pse = Math.ceil(totalWatts / 1320);
+  if (pse > 0) {
+    html += `<tr class="bom-pse-row">
+      <td colspan="15">Minimum 80A 480V PSE Required</td>
+      <td>${pse}</td><td></td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+// ═══════════════════════════════════════════════════════════════
+//  BASKET EXPORT
+// ═══════════════════════════════════════════════════════════════
+function copyBasketText() {
+  if (!basket.length) return;
+  const lines = basket.map(it => `${it.qty}\t${it.model}\t${it.sales || ''}\t${it.desc}\t${it.price ? fmtPrice(it.price) : ''}`);
+  const text = 'QTY\tMODEL\tSALES MODEL\tDESCRIPTION\tLIST PRICE\n' + lines.join('\n');
+  navigator.clipboard.writeText(text).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+  });
+}
+
+function downloadBasketXlsx() {
+  if (!basket.length || typeof XLSX === 'undefined') return;
+  const rows = [['QTY','MODEL','SALES MODEL','DESCRIPTION','LIST PRICE','EXTENDED']];
+  let total = 0;
+  basket.forEach(it => {
+    const ext = it.price ? it.price * it.qty : '';
+    if (ext) total += ext;
+    rows.push([it.qty, it.model, it.sales || '', it.desc, it.price || '', ext || '']);
+  });
+  rows.push(['','','','','TOTAL', total || '']);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'BOM');
+  XLSX.writeFile(wb, 'MODOROLL_BOM.xlsx');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  KIT SEARCH
+// ═══════════════════════════════════════════════════════════════
+function renderKitResults() {
+  const q   = (document.getElementById('kit-search-input').value || '').toLowerCase();
+  const cat = document.getElementById('kit-cat-filter').value;
+  const container = document.getElementById('kit-results');
+
+  const filtered = ACCESSORIES.filter(a => {
+    const matchCat = !cat || a.cat === cat;
+    const matchQ   = !q || a.desc.toLowerCase().includes(q) || a.part.toLowerCase().includes(q) || a.cat.toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="no-results">No items found.</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(a => `
+    <div class="kit-row">
+      <span class="kit-tag">${a.part || '—'}</span>
+      <span class="kit-cat">${a.cat}</span>
+      <span class="kit-desc">${a.desc}</span>
+      <span class="kit-price">${a.price ? fmtPrice(a.price) : '—'}</span>
+      <button class="kit-add-btn" onclick='addKitToBasket(${JSON.stringify(a.part)},${JSON.stringify(a.desc)},${a.price||null})'>+ Add</button>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SALES MODEL LOOKUP
+// ═══════════════════════════════════════════════════════════════
+function renderCatalogResults() {
+  const q = (document.getElementById('cat-search-input').value || '').trim().toUpperCase();
+  const container = document.getElementById('cat-results');
+  const countEl = document.getElementById('cat-count');
+  if (!CATALOG_LIST.length) {
+    countEl.textContent = '';
+    container.innerHTML = '<div class="no-results">Catalog not loaded — make sure catalog_data.js is in the same folder as this page.</div>';
+    return;
+  }
+  if (q.length < 3) {
+    countEl.textContent = `${CATALOG_LIST.length.toLocaleString()} models in catalog. Type at least 3 characters.`;
+    container.innerHTML = '';
+    return;
+  }
+  const LIMIT = 100;
+  const hits = [];
+  for (const r of CATALOG_LIST) {
+    if (r.sales.includes(q) || (r.eng && r.eng.includes(q))) {
+      hits.push(r);
+      if (hits.length > LIMIT) break;
+    }
+  }
+  // exact sales-model matches first
+  hits.sort((a, b) => (b.sales === q) - (a.sales === q));
+  countEl.textContent = hits.length > LIMIT ? `Showing first ${LIMIT} matches — keep typing to narrow.` : `${hits.length} match${hits.length === 1 ? '' : 'es'}.`;
+  if (!hits.length) { container.innerHTML = '<div class="no-results">No catalog match.</div>'; return; }
+  container.innerHTML = hits.slice(0, LIMIT).map((r, i) => {
+    const dup = (CATALOG_BY_SALES.get(r.sales) || []).length > 1;
+    const desc = r.desc || getDescriptionDxf(r.eng);
+    return `<div class="kit-row">
+      <span class="kit-tag" style="color:#1565c0;">${r.sales}${dup ? ' <span title="This Sales Model maps to more than one Engineering Model" style="color:#cc0000;">⚠</span>' : ''}</span>
+      <span class="kit-tag" style="min-width:230px;">${r.eng || '— (catalog only)'}</span>
+      <span class="kit-desc">${desc}</span>
+      <span class="kit-price">${r.price ? fmtPrice(r.price) : '—'}</span>
+      <button class="kit-add-btn" data-eng="${r.eng}" data-sales="${r.sales}" onclick="addCatalogToBasket(this.dataset.eng, this.dataset.sales)">+ Add</button>
+    </div>`;
+  }).join('');
+}
+function addCatalogToBasket(eng, sales) {
+  const rec = eng ? CATALOG_BY_ENG.get(eng) : (CATALOG_BY_SALES.get(sales) || [])[0];
+  if (!rec) return;
+  const model = rec.eng || rec.sales;
+  const existing = basket.find(i => i.model === model);
+  if (existing) { existing.qty++; }
+  else {
+    basket.push({ model, sales: rec.sales, desc: rec.desc || getDescriptionDxf(rec.eng),
+      price: rec.price, qty: 1, type: rec.eng ? identifyType(rec.eng) : 'catalog' });
+  }
+  renderBasket();
+  renderBomPreview();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+renderBuilder('straight', straightGroups);
+renderBuilder('curve',    curveGroups);
+renderBuilder('divert',   divertGroups);
+renderBuilder('transfer', transferGroups);
+renderBuilder('gate',     gateGroups);
+renderBuilder('tangent',  tangentGroups);
+renderKitResults();
+renderCatalogResults();
+renderBasket();
+renderBomPreview();
+</script>
+</body>
+</html>

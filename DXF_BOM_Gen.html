@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DXF BOM Generator v1 - Modoroll MODO-MARKET</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --m8-green: #1ad51d;
+      --m8-mdgreen: #006600;
+      --page-bg: #006600;
+      --header-pad: 132px;
+      --hero-h: 12vh;
+      --overlay: rgba(0,0,0,.45);
+      --maxw: 1400px;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f0f4f0; color:#333; }
+    a { color:inherit; text-decoration:none; }
+    main{ padding-top:0; }
+
+    /* ── Header ── */
+    .header-wrap { position:fixed; inset:0 0 auto 0; z-index:9999; display:grid; grid-template-rows:auto 44px; }
+    .logo-bar { display:flex; justify-content:center; align-items:center; background:#fff; padding:10px 16px; border-bottom:1px solid #eee; filter:drop-shadow(0 4px 12px rgba(0,0,0,.04)); }
+    .logo-bar img { height:72px; width:auto; max-width:min(100%,920px); }
+    .nav-bar { display:flex; gap:24px; align-items:center; justify-content:center; background:#fff; border-bottom:1px solid #eee; overflow-x:auto; white-space:nowrap; }
+    .nav-bar a { display:inline-block; padding:10px 6px; font-weight:600; }
+    .nav-bar a:hover { border-bottom:2px solid var(--m8-green); }
+
+    /* ── Hero ── */
+    .hero { position:relative; min-height:var(--hero-h); display:grid; place-items:center; text-align:center; color:#fff; overflow:clip; }
+    .hero::before { content:""; position:fixed; inset:0; background-image:url("img/formicbg.png"); background-size:cover; background-position:center; z-index:-2; transform:translateZ(0); }
+    .hero::after { content:""; position:absolute; inset:0; background:linear-gradient(to bottom,var(--overlay),rgba(0,0,0,.3)); z-index:-1; }
+    .hero-inner { width:min(92vw,var(--maxw)); padding:32px 16px; }
+    .hero h1 { font-size:1.8rem; margin-bottom:0.2rem; text-transform:uppercase; letter-spacing:1px; }
+    .hero p { font-size:0.9rem; opacity:0.9; }
+
+    /* ── Page layout ── */
+    .page-wrap { max-width:var(--maxw); margin:1rem auto; padding:0 1rem 3rem; display:flex; flex-direction:column; gap:1rem; }
+
+    /* ── Panel ── */
+    .panel { background:#fff; border-radius:10px; padding:0.75rem 1rem; box-shadow:0 2px 8px rgba(0,0,0,0.08); border-left:4px solid var(--m8-green); }
+    .panel-title h2 { color:var(--m8-mdgreen); font-size:1.1rem; font-weight:800; margin-bottom:0.5rem; }
+    .panel-title h3 { color:var(--m8-mdgreen); font-size:1rem; font-weight:800; margin-bottom:0.5rem; }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border:3px dashed #7cb342; border-radius:12px; padding:2.5rem 1rem;
+      text-align:center; cursor:pointer; transition:all 0.2s; background:#f9fff5;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { background:#e8f5e9; border-color:var(--m8-green); }
+    .drop-zone .drop-icon { font-size:2.5rem; margin-bottom:0.5rem; }
+    .drop-zone p { color:#555; font-size:0.9rem; }
+    .drop-zone strong { color:var(--m8-mdgreen); }
+    #file-input { display:none; }
+
+    /* ── Column toggles ── */
+    .col-toggles { display:flex; flex-wrap:wrap; gap:0.4rem; align-items:center; }
+    .col-toggle { display:flex; align-items:center; gap:0.3rem; padding:0.25rem 0.6rem;
+      border:1px solid #c8e6c9; border-radius:20px; background:#f9fff5; cursor:pointer;
+      font-size:0.78rem; font-weight:600; color:var(--m8-mdgreen); user-select:none; transition:all 0.15s; }
+    .col-toggle:hover { background:#e8f5e9; }
+    .col-toggle input { width:13px; height:13px; cursor:pointer; }
+    .col-toggle.off { opacity:0.45; }
+
+    /* ── Toolbar ── */
+    .toolbar { display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; }
+    .btn { padding:0.5rem 1.1rem; border:none; border-radius:7px; font-size:0.85rem; font-weight:700;
+      cursor:pointer; transition:all 0.2s; }
+    .btn-primary { background:linear-gradient(135deg,var(--m8-green),#7cb342); color:#fff;
+      box-shadow:0 3px 10px rgba(28,213,29,0.3); }
+    .btn-primary:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(28,213,29,0.4); }
+    .btn-primary:disabled { background:#ccc; cursor:not-allowed; transform:none; box-shadow:none; }
+    .btn-secondary { background:#fff; border:1px solid #7cb342; color:var(--m8-mdgreen); }
+    .btn-secondary:hover { background:#f0f8e8; }
+
+    /* ── Stats pills ── */
+    .stats-row { display:flex; gap:0.5rem; flex-wrap:wrap; }
+    .stat-pill { background:#e8f5e9; color:#2d5016; border-radius:12px; padding:0.25rem 0.7rem;
+      font-size:0.78rem; font-weight:700; border:1px solid #c8e6c9; }
+
+    /* ── BOM table ── */
+    .bom-wrap { overflow-x:auto; }
+    .bom-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+    .bom-table th { background:#e8f5e9; color:var(--m8-mdgreen); font-weight:800; padding:0.45rem 0.6rem;
+      text-align:left; border-bottom:2px solid #c8e6c9; white-space:nowrap; position:sticky; top:0; }
+    .bom-table td { padding:0.4rem 0.6rem; border-bottom:1px solid #f0f0f0; vertical-align:top; }
+    .bom-table tr:hover td { background:#f9fff5; }
+    .bom-table tr.total-row td { background:#e8f5e9; font-weight:800; border-top:2px solid #7cb342; }
+    .bom-table tr.col-desc-row td { background:#f9fff5; font-size:0.72rem; color:#555; border-top:1px solid #e0e0e0; }
+    .bom-table tr.pse-row td { background:#fff8e1; font-weight:700; color:#5d4037; font-size:0.78rem; }
+    .bom-table tr.spacer-row td { height:1.5rem; background:transparent; border:none; }
+    .bom-table .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-weight:700; }
+    .bom-table .num { text-align:right; }
+    .hidden-col { display:none; }
+
+    /* ── Options row ── */
+    .options-row { display:flex; gap:1rem; flex-wrap:wrap; align-items:center; margin-top:0.5rem; }
+    .option-item { display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; font-weight:600; color:#333; }
+    .option-item input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:var(--m8-green); }
+    .option-item input[type=number] { width:80px; padding:0.25rem 0.4rem; border:1px solid #c8e6c9; border-radius:6px; font-size:0.85rem; }
+
+    /* ── Unknown / addl section ── */
+    .unknown-section { margin-top:0.5rem; }
+    .unknown-header { display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0.75rem;
+      background:#fff3cd; border-radius:8px; border:1px solid #ffc107; margin-bottom:0.5rem; cursor:pointer; }
+    .unknown-header h3 { color:#856404; font-size:0.95rem; font-weight:800; flex:1; }
+    .unknown-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+    .unknown-table th { background:#fff8e1; color:#856404; font-weight:800; padding:0.4rem 0.6rem;
+      text-align:left; border-bottom:2px solid #ffc107; }
+    .unknown-table td { padding:0.4rem 0.6rem; border-bottom:1px solid #fef9e7; vertical-align:middle; }
+    .unknown-table tr:hover td { background:#fffde7; }
+    .include-cb { width:15px; height:15px; cursor:pointer; }
+
+    /* ── Messages ── */
+    .message { padding:0.6rem 0.8rem; border-radius:4px; display:none; font-size:0.85rem; margin-bottom:0.5rem; }
+    .message.show { display:block; }
+    .message.success { background:#d4edda; border-left:3px solid #28a745; color:#155724; }
+    .message.error   { background:#f8d7da; border-left:3px solid #dc3545; color:#721c24; }
+    .message.warning { background:#fff3cd; border-left:3px solid #ffc107; color:#856404; }
+
+    /* ── Empty state ── */
+    .empty-state { text-align:center; padding:2rem; color:#999; font-size:0.9rem; }
+
+    @media(max-width:700px) {
+      .col-toggles { gap:0.25rem; }
+      .col-toggle { font-size:0.72rem; padding:0.2rem 0.4rem; }
+    }
+  
+  /* ── SHARED MODOROLL STYLE ── */
+  :root {
+    --green:      #2e7d32;
+    --green-dark: #1b5e20;
+    --green-lt:   #c8e6c9;
+    --accent:     #4caf50;
+  }
+  body {
+    background: #111 url("img/formicbg.png") center/cover fixed !important;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,40,0,0.72);
+    z-index: 0;
+    pointer-events: none;
+  }
+  /* ── HIDE OLD HEADER ── */
+  .header-wrap, header, .logo-bar, .nav-bar { display: none !important; }
+  /* ── NEW NAV ── */
+  nav.modoroll-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,30,10,0.96);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 8px 24px;
+  }
+  nav.modoroll-nav a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 2px;
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+  }
+  nav.modoroll-nav a:hover { color: #fff; }
+  nav.modoroll-nav a.active { color: var(--accent); border-color: var(--accent); }
+  /* ── LOGO BAR ── */
+  .modoroll-logo-bar {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 0 4px;
+  }
+  .modoroll-logo-bar img { height: 52px; }
+  /* ── HERO TIGHTEN ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 0 !important;
+  }
+  .hero-inner { padding: 16px !important; }
+  .hero::before, .hero::after { display: none !important; }
+  .hero h1 { text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+  /* ── CONTENT LAYERS ── */
+  .wrap, .page-wrap, main, .container { position: relative; z-index: 1; }
+  .panel { position: relative; z-index: 1; }
+  main { padding-top: 0 !important; }
+
+</style>
+</head>
+<body>
+<nav class="modoroll-nav">
+  <a href="BOM_Generator_Unified.html">Models</a>
+  <a href="Kit_Tools.html">Kits</a>
+  <a href="PartNumber_Tools.html">Parts</a>
+  <a href="Resources.html" class="active">Docs/Worksheets</a>
+  <a href="Calcs.html">Checks/Calcs</a>
+</nav>
+<div class="modoroll-logo-bar">
+  <a href="index.html"><img src="img/MRHeader.png" alt="MODOROLL"></a>
+</div>
+
+  <!-- Fixed Header -->
+  <header class="header-wrap">
+    <div class="logo-bar">
+      <a href="index.html"><img src="img/MRHeader.png" alt="MODOROLL logo"/></a>
+    </div>
+    <nav class="nav-bar" aria-label="Main">
+      <a href="https://www.MODO-MARKET.com/Models_Straight.html">Straights</a>
+      <a href="https://www.MODO-MARKET.com/Models_Curve.html">Curves</a>
+      <a href="https://www.MODO-MARKET.com/Models_Divert_v100.html">Divert/Merge</a>
+      <a href="https://www.MODO-MARKET.com/Models_Transfer_v100.html">Transfers</a>
+      <a href="https://www.MODO-MARKET.com/Models_Gate_v100.html">Gates</a>
+      <a href="https://www.MODO-MARKET.com/Models_Tangent_v100.html">Tangents</a>
+      <a href="https://www.MODO-MARKET.com/DXF_BOM_Gen_v100.html" style="color:var(--m8-mdgreen);font-weight:900;" aria-current="page">DXF BOM</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>DXF BOM GENERATOR v1</h1>
+        <p>Drop a site layout DXF to generate a complete Bill of Materials</p>
+      </div>
+    </section>
+
+    <div class="page-wrap">
+
+      <!-- Drop Zone -->
+      <div class="panel">
+        <div class="panel-title"><h2>📂 Site Layout DXF</h2></div>
+        <div id="msg" class="message"></div>
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <div class="drop-icon">📄</div>
+          <p><strong>Click to browse</strong> or drag &amp; drop a DXF file here</p>
+          <p id="file-name" style="margin-top:0.4rem;font-size:0.8rem;color:#7cb342;font-weight:700;"></p>
+        </div>
+        <input type="file" id="file-input" accept=".dxf">
+        <!-- Options -->
+        <div class="options-row" style="margin-top:0.75rem;">
+          <label class="option-item">
+            <input type="checkbox" id="opt-dress" onchange="rerenderBom()">
+            Fully Dress the System <span style="font-size:0.75rem;color:#888;">(doubles cover count)</span>
+          </label>
+          <label class="option-item">
+            Customer Discount:
+            <input type="number" id="opt-discount" min="0" max="100" step="0.5" value="0"
+              oninput="rerenderBom()" style="width:70px;">%
+          </label>
+        </div>
+      </div>
+
+      <!-- Column Visibility -->
+      <div class="panel" id="col-panel" style="display:none;">
+        <div class="panel-title"><h3>👁 Show / Hide Columns</h3></div>
+        <div class="col-toggles" id="col-toggles"></div>
+      </div>
+
+      <!-- Stats + Actions -->
+      <div class="panel" id="stats-panel" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+          <div class="stats-row" id="stats-row"></div>
+          <div class="toolbar">
+            <button class="btn btn-primary" id="btn-xlsx" onclick="exportXlsx()">⬇ Download XLSX</button>
+            <button class="btn btn-secondary" onclick="clearAll()">✕ Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOM Preview -->
+      <div class="panel" id="bom-panel" style="display:none;">
+        <div class="panel-title"><h2>📋 Bill of Materials</h2></div>
+        <div class="bom-wrap">
+          <table class="bom-table" id="bom-table">
+            <thead id="bom-thead"></thead>
+            <tbody id="bom-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Additional Parts (layer-based) -->
+      <div class="panel" id="addl-panel" style="display:none;">
+        <div class="unknown-header" onclick="toggleSection('addl-body','addl-chevron')">
+          <h3>🔩 Additional Parts <span id="addl-count" style="font-weight:400;font-size:0.85rem;"></span></h3>
+          <span id="addl-chevron">▼</span>
+        </div>
+        <div id="addl-body">
+          <p style="font-size:0.78rem;color:#666;padding:0.3rem 0.5rem 0.5rem;">
+            Blocks found on layers <code>MR_SUPPORT</code>, <code>MR_KIT</code>, <code>MR_GR</code>, <code>MR_ACC</code>.
+            Check the rows to include in the BOM preview and XLSX export.
+          </p>
+          <div class="bom-wrap">
+            <table class="unknown-table" id="addl-table">
+              <thead><tr>
+                <th style="width:36px;">✓</th>
+                <th>QTY</th><th>BLOCK NAME</th><th>LAYER</th><th>DESCRIPTION</th>
+              </tr></thead>
+              <tbody id="addl-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unknown Blocks -->
+      <div class="panel" id="unk-panel" style="display:none;">
+        <div class="unknown-header" onclick="toggleSection('unk-body','unk-chevron')">
+          <h3>❓ Unknown Blocks <span id="unk-count" style="font-weight:400;font-size:0.85rem;"></span></h3>
+          <span id="unk-chevron">▼</span>
+        </div>
+        <div id="unk-body">
+          <p style="font-size:0.78rem;color:#666;padding:0.3rem 0.5rem 0.5rem;">
+            Blocks not matching Modoroll naming convention. Check rows to include in BOM preview and XLSX export.
+          </p>
+          <div class="bom-wrap">
+            <table class="unknown-table" id="unk-table">
+              <thead><tr>
+                <th style="width:36px;">✓</th>
+                <th>QTY</th><th>BLOCK NAME</th><th>DESCRIPTION</th>
+              </tr></thead>
+              <tbody id="unk-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-wrap -->
+  </main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// COLUMN DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════════════
+const COLS = [
+  { key:'qty',        label:'QTY',         sum:true,  numeric:true,  desc:'Quantity'                   },
+  { key:'fr',         label:'FR#',          sum:false, numeric:false, desc:'Frame / Line Reference'     },
+  { key:'model',      label:'MODEL',        sum:false, numeric:false, desc:'Model Number'               },
+  { key:'desc',       label:'DESCRIPTION',  sum:false, numeric:false, desc:'Description'                },
+  { key:'listPrice',  label:'LIST PRICE',   sum:false, numeric:false, desc:'List Price'                 },
+  { key:'length',     label:'LENGTH',       sum:'len', numeric:false, desc:'Total Rail/Arc Length'      },
+  { key:'zones',      label:'ZONES',        sum:true,  numeric:true,  desc:'Zone Count'                 },
+  { key:'carriers',   label:'CARRIERS',     sum:true,  numeric:true,  desc:'Carrier Roller Count'       },
+  { key:'cards',      label:'CARDS',        sum:true,  numeric:true,  desc:'Drive Card Count'           },
+  { key:'grail',      label:'G-RAIL',       sum:true,  numeric:true,  desc:'Guardrail Sections'         },
+  { key:'flatBlack',  label:'FLAT BLACK',   sum:'fb',  numeric:false, desc:'Flat Black Cable (ft, ceil)'},
+  { key:'supports',   label:'SUPPORTS',     sum:true,  numeric:true,  desc:'Support Count'              },
+  { key:'covers',     label:'COVERS',       sum:true,  numeric:true,  desc:'Cover Count'                },
+  { key:'obands',     label:'OBANDS',       sum:true,  numeric:true,  desc:'O-Band Count'               },
+  { key:'watts',      label:'WATTS',        sum:true,  numeric:true,  desc:'Power Consumption (W)'      },
+  { key:'totalPrice', label:'TOTAL PRICE',  sum:false, numeric:false, desc:'Total Price after Discount' },
+];
+
+const colVisible = {};
+COLS.forEach(c => colVisible[c.key] = true);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LOOKUP TABLES  (from validated model HTML pages)
+// ═══════════════════════════════════════════════════════════════════════════
+const BRAND_DESC  = {'0':'Any Available','1':'Interroll','2':'Pulse','3':'Itoh Denki'};
+const PROTO_DESC  = {'00':'No Controls','01':'AS-i','02':'ZPA','03':'ModoLink','04':'Numina','05':'KPI','06':'Pulse','77':'Hybrid/Custom'};
+const FINISH_DESC = {'STD':'Modoroll Grey','RAL':'Custom Color','ESD':'Anti-Static'};
+const RAIL_DESC   = {'FL':'Fliprail Roller Set Low','FH':'Fliprail Roller Set High','SL':'Scale Bed Set Low','SH':'Scale Bed Set High','HD':'Heavy Duty Series'};
+const ROLLER_DESC = {'TG':'Two Groove','GR':'Gravity Roller','PV':'Poly V','CH':'Chain','BI':'Belted Incline','BD':'Belted Decline/Flat','VC':'V Conform','PO':'POLY-O','SR':'Skew Right','SL':'Skew Left'};
+const MODULE_CURVE = {'H':'Hedra','T':'Tapered'};
+const ROLLERSET_DESC = {'L':'Roller Set Low','H':'Roller Set High'};
+const MODULE_DM   = {'DW':'ModoX30','MG':'Merge','DS':'ModoSort 30'};
+const DIR_DM      = {'L':'Package to/from Left','R':'Package to/from Right','B':'Bi-Directional'};
+const MODULE_TR   = {'MX':'ModoX90','MS':'ModoSort90'};
+const MODULE_GT   = {'GL':'Gate Roller Set Low (RSL)','GH':'Gate Roller Set High (RSH)'};
+const POWER_DESC  = {'P':'Powered','U':'Un-Powered','G':'Gravity'};
+const HAND_LRIH   = {'LH':'Left Hand Controls','RH':'Right Hand Controls','LI':'Left Inverted Controls','RI':'Right Inverted Controls','NC':'No Controls'};
+const HAND_LRN    = {'L':'LH Control','R':'RH Control','N':'No Control'};
+
+const ADDL_LAYERS = new Set(['MR_SUPPORT','MR_KIT','MR_GR','MR_ACC']);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPE-FIRST DISPATCH
+// Returns: 'straight'|'curve'|'divert'|'transfer'|'gate'|'tangent'|'unknown'
+// ═══════════════════════════════════════════════════════════════════════════
+function identifyType(model) {
+  if (!model || typeof model !== 'string') return 'unknown';
+  const m = model.trim().toUpperCase();
+  // Tangent checked FIRST — FL/FH prefix shared with straight
+  if (/^(FL|FH)\d{3}[PUG]\d{2}-[A-Z]{2}-\d[A-Z]{3}$/.test(m)) return 'tangent';
+  // Straight: [FL|FH|SL|SH|HD] + 3-digit length + [P|G] + 2-digit BF + C\d - zones + RT + 3-digit ZL - 2-char hand + brand + proto + finish
+  if (/^(FL|FH|SL|SH|HD)\d{3}[PG]\d{2}C\d-\d[A-Z]{2}\d{3}-[A-Z]{2}\d\d{2}[A-Z]{3}$/.test(m)) return 'straight';
+  // Curve: [H|T][L|H] + 2-digit angle + 2-digit BF + C\d - zones + RT + 3-digit radius - 2-char hand + brand + proto + finish
+  if (/^[HT][LH]\d{2}\d{2}C\d-\d[A-Z]{2}\d{3}-[A-Z]{2}\d\d{2}[A-Z]{3}$/.test(m)) return 'curve';
+  // Divert/Merge: [DW|DS|MG] + 2-digit BF + [L|R|B] + 3-digit ZL + C\d - 2-digit angle + [L|R|N] + brand + proto + finish
+  if (/^(DW|DS|MG)\d{2}[LRB]\d{3}C\d-\d{2}[LRN]\d\d{2}[A-Z]{3}$/.test(m)) return 'divert';
+  // Transfer: [MX|MS] + 2-digit BF + 2-digit ZL + [R|L|B] - [L|R|N] + brand + proto + finish
+  if (/^(MX|MS)\d{2}\d{2}[RLB]-[LRN]\d\d{2}[A-Z]{3}$/.test(m)) return 'transfer';
+  // Gate: [GL|GH] + 2-digit arm + 2-digit tangent - 2-digit BF + C[23] + [TG|PV] + [0|1|2] - [L|R|N] + brand + proto + finish
+  if (/^(GL|GH)\d{2}\d{2}-\d{2}C[23](TG|PV)[012]-[LRN]\d\d{2}[A-Z]{3}$/.test(m)) return 'gate';
+  return 'unknown';
+}
+
+function isModoroll(name) { return identifyType(name) !== 'unknown'; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PARSERS
+// ═══════════════════════════════════════════════════════════════════════════
+function parseStraight(model) {
+  const m = model.match(/^([A-Z]{2})(\d{3})([PG])(\d{2})(C\d)-(\d)([A-Z]{2})(\d{3})-([A-Z]{2})(\d)(\d{2})([A-Z]{3})$/);
+  if (!m) return null;
+  return { railType:m[1], railLength:parseInt(m[2]), power:m[3], bf:parseInt(m[4]),
+    rcd:m[5], zones:parseInt(m[6]), rollerType:m[7], zoneLength:parseInt(m[8]),
+    controlHand:m[9], brand:m[10], protocol:m[11], finish:m[12] };
+}
+function parseCurve(model) {
+  const m = model.match(/^([A-Z])([LH])(\d{2})(\d{2})(C\d)-(\d)([A-Z]{2})(\d{3})-([A-Z]{2})(\d)(\d{2})([A-Z]{3})$/);
+  if (!m) return null;
+  return { module:m[1], rollerSet:m[2], angle:parseInt(m[3]), bf:parseInt(m[4]),
+    rcd:m[5], zones:parseInt(m[6]), rollerType:m[7], radius:parseInt(m[8]),
+    controlHand:m[9], brand:m[10], protocol:m[11], finish:m[12] };
+}
+function parseDivert(model) {
+  const m = model.match(/^(DW|MG|DS)(\d{2})([LRB])(\d{3})(C\d)-(\d{2})([LRN])(\d)(\d{2})([A-Z]{3})$/);
+  if (!m) return null;
+  return { module:m[1], bf:parseInt(m[2]), direction:m[3], zoneLength:parseInt(m[4]),
+    rcd:m[5], dischargeAngle:parseInt(m[6]), controlHand:m[7], brand:m[8], protocol:m[9], finish:m[10] };
+}
+function parseTransfer(model) {
+  const m = model.match(/^(MX|MS)(\d{2})(\d{2})([RLB])-([LRN])(\d)(\d{2})([A-Z]{3})$/);
+  if (!m) return null;
+  return { module:m[1], bf:parseInt(m[2]), zoneLength:parseInt(m[3]), direction:m[4],
+    controlHand:m[5], brand:m[6], protocol:m[7], finish:m[8] };
+}
+function parseGate(model) {
+  const m = model.match(/^(GL|GH)(\d{2})(\d{2})-(\d{2})(C[23])(TG|PV)([012])-([LRN])(\d)(\d{2})([A-Z]{3})$/);
+  if (!m) return null;
+  return { module:m[1], arm:parseInt(m[2]), tangent:parseInt(m[3]), bf:parseInt(m[4]),
+    rcd:m[5], rollerType:m[6], zones:parseInt(m[7]),
+    controlHand:m[8], brand:m[9], protocol:m[10], finish:m[11] };
+}
+function parseTangent(model) {
+  const m = model.match(/^([A-Z]{2})(\d{3})([PUG])(\d{2})-([A-Z]{2})-(\d)([A-Z]{3})$/);
+  if (!m) return null;
+  return { railType:m[1], length:parseInt(m[2]), power:m[3], bf:parseInt(m[4]),
+    rollerType:m[5], brand:m[6], finish:m[7] };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DESCRIPTION BUILDERS  (from validated model HTML pages)
+// ═══════════════════════════════════════════════════════════════════════════
+function descStraight(p) {
+  const parts = [];
+  if (RAIL_DESC[p.railType])  parts.push(RAIL_DESC[p.railType]);
+  parts.push(`${p.railLength}"`);
+  if (p.power === 'P') parts.push('Powered'); else if (p.power === 'G') parts.push('Gravity');
+  parts.push(`${p.bf}"BF ${p.rcd.replace('C','')}-C`);
+  parts.push(`${p.zones} Zone`);
+  if (ROLLER_DESC[p.rollerType]) parts.push(ROLLER_DESC[p.rollerType]);
+  if (p.zoneLength) parts.push(`${p.zoneLength}" zone`);
+  if (HAND_LRIH[p.controlHand]) parts.push(HAND_LRIH[p.controlHand]);
+  if (p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (p.protocol !== '00' && PROTO_DESC[p.protocol]) parts.push(PROTO_DESC[p.protocol]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function descCurve(p) {
+  const parts = [];
+  if (MODULE_CURVE[p.module]) parts.push(MODULE_CURVE[p.module]);
+  if (ROLLERSET_DESC[p.rollerSet]) parts.push(ROLLERSET_DESC[p.rollerSet]);
+  parts.push(`${p.angle}\u00b0`);
+  parts.push(`${p.bf}"BF ${p.rcd.replace('C','')}-C`);
+  parts.push(`${p.zones} Zone`);
+  if (ROLLER_DESC[p.rollerType]) parts.push(ROLLER_DESC[p.rollerType]);
+  parts.push(`${p.radius}" radius`);
+  if (HAND_LRIH[p.controlHand]) parts.push(HAND_LRIH[p.controlHand]);
+  if (p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (p.protocol !== '00' && PROTO_DESC[p.protocol]) parts.push(PROTO_DESC[p.protocol]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function descDivert(p) {
+  const parts = [];
+  if (MODULE_DM[p.module]) parts.push(MODULE_DM[p.module]);
+  parts.push(`${p.bf}" BF`);
+  if (DIR_DM[p.direction]) parts.push(DIR_DM[p.direction]);
+  parts.push(`${p.zoneLength}" Zone`);
+  parts.push(`${p.rcd.replace('C','')}-C`);
+  parts.push(`${p.dischargeAngle}\u00b0 Discharge`);
+  if (HAND_LRN[p.controlHand]) parts.push(HAND_LRN[p.controlHand]);
+  if (p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (p.protocol !== '00' && PROTO_DESC[p.protocol]) parts.push(PROTO_DESC[p.protocol]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function descTransfer(p) {
+  const parts = [];
+  if (MODULE_TR[p.module]) parts.push(MODULE_TR[p.module]);
+  parts.push(`${p.bf}" BF`);
+  parts.push(`${p.zoneLength}" Zone`);
+  if (DIR_DM[p.direction]) parts.push(DIR_DM[p.direction]);
+  if (HAND_LRN[p.controlHand]) parts.push(HAND_LRN[p.controlHand]);
+  if (p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (p.protocol !== '00' && PROTO_DESC[p.protocol]) parts.push(PROTO_DESC[p.protocol]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function descGate(p) {
+  const parts = [];
+  if (MODULE_GT[p.module]) parts.push(MODULE_GT[p.module]);
+  parts.push(`${p.arm}" Arm`);
+  parts.push(`${p.tangent}" Tangent`);
+  parts.push(`${p.bf}" BF`);
+  parts.push(`${p.rcd.replace('C','')}-C`);
+  if (ROLLER_DESC[p.rollerType]) parts.push(ROLLER_DESC[p.rollerType]);
+  parts.push(p.zones === 0 ? 'Gravity Gate' : `${p.zones} Zone${p.zones !== 1 ? 's' : ''}`);
+  if (HAND_LRN[p.controlHand]) parts.push(HAND_LRN[p.controlHand]);
+  if (p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (p.protocol !== '00' && PROTO_DESC[p.protocol]) parts.push(PROTO_DESC[p.protocol]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+function descTangent(p) {
+  const parts = [];
+  if (RAIL_DESC[p.railType]) parts.push(RAIL_DESC[p.railType]);
+  parts.push(`${p.length}"`);
+  if (POWER_DESC[p.power]) parts.push(POWER_DESC[p.power]);
+  parts.push(`${p.bf}BF`);
+  if (ROLLER_DESC[p.rollerType]) parts.push(ROLLER_DESC[p.rollerType]);
+  if (p.power !== 'G' && p.brand !== '0' && BRAND_DESC[p.brand]) parts.push(BRAND_DESC[p.brand]);
+  if (FINISH_DESC[p.finish]) parts.push(FINISH_DESC[p.finish]);
+  return parts.join(', ');
+}
+
+function getDescription(name) {
+  const t = identifyType(name);
+  switch(t) {
+    case 'straight': { const p = parseStraight(name); return p ? descStraight(p) : name; }
+    case 'curve':    { const p = parseCurve(name);    return p ? descCurve(p)    : name; }
+    case 'divert':   { const p = parseDivert(name);   return p ? descDivert(p)   : name; }
+    case 'transfer': { const p = parseTransfer(name); return p ? descTransfer(p) : name; }
+    case 'gate':     { const p = parseGate(name);     return p ? descGate(p)     : name; }
+    case 'tangent':  { const p = parseTangent(name);  return p ? descTangent(p)  : name; }
+    default: return name;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MATH HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+function arcLengthIn(radiusIn, angleDeg) { return radiusIn * (angleDeg * Math.PI / 180); }
+function ceilFt(inches) { return Math.ceil(inches / 12); }
+function roundFt(inches) { return Math.round(inches / 12); }
+function ftStr(inches) { return `${roundFt(inches)}'`; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BOM ROW DERIVATION  (type-first dispatch, one subroutine per type)
+// ═══════════════════════════════════════════════════════════════════════════
+function deriveRow(blockName, qty, dressed) {
+  const type = identifyType(blockName);
+
+  // ── Straight ──
+  if (type === 'straight') {
+    const p = parseStraight(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isGravity  = p.power === 'G' || p.rollerType === 'GR';
+    const isRSH      = p.railType === 'FH';
+    const rcdIn      = parseInt(p.rcd.replace('C',''));
+    const totalR     = Math.round(p.railLength / rcdIn);
+    const zonesCt    = isGravity ? 0 : qty * p.zones;
+    const carriers   = qty * (isGravity ? totalR : totalR - p.zones);
+    const cards      = isGravity ? 0 : qty * Math.max(1, Math.ceil(p.zones / 2));
+    const grail      = isRSH ? qty * p.zones : 0;
+    const fbIn       = isGravity ? 0 : qty * 2 * p.railLength;
+    let coversPerBed = 0;
+    if (!isGravity) { coversPerBed = p.zones <= 2 ? 1 : p.zones <= 4 ? 2 : 3; }
+    const covers     = qty * coversPerBed * (dressed ? 2 : 1);
+    const obands     = isGravity ? 0 : qty * (totalR - 1);
+    const wattsPerZ  = p.rollerType === 'BI' ? 50 : 35;
+    const watts      = isGravity ? 0 : qty * p.zones * wattsPerZ;
+    return { qty, fr:'Coming Soon', model:blockName, desc:descStraight(p),
+      listPrice:'—', length:ftStr(qty * p.railLength), _lenIn:qty * p.railLength,
+      zones:zonesCt, carriers, cards, grail,
+      flatBlack:isGravity ? `0'` : `${ceilFt(fbIn)}'`, _fbIn:fbIn,
+      supports:qty, covers, obands, watts, totalPrice:'—' };
+  }
+
+  // ── Curve ──
+  if (type === 'curve') {
+    const p = parseCurve(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isGravity  = p.zones === 0;
+    const isRSH      = p.rollerSet === 'H';
+    const rcdIn      = parseInt(p.rcd.replace('C',''));
+    const arcIn      = arcLengthIn(p.radius, p.angle);
+    const outerArcIn = arcLengthIn(p.radius + p.bf, p.angle);
+    const totalR     = Math.round(arcIn / rcdIn);
+    const zonesCt    = isGravity ? 0 : qty * p.zones;
+    const carriers   = qty * (isGravity ? totalR : totalR - p.zones);
+    const cards      = isGravity ? 0 : qty * Math.max(1, Math.ceil(p.zones / 2));
+    const grail      = isRSH ? qty * p.zones : 0;
+    const fbIn       = isGravity ? 0 : qty * outerArcIn;
+    const supportsPerUnit = p.angle === 90 ? 2 : 1;
+    const coversPerUnit   = isGravity ? 0 : Math.ceil(arcIn / 60);
+    const covers     = qty * coversPerUnit * (dressed ? 2 : 1);
+    const obands     = isGravity ? 0 : qty * (totalR - 1);
+    const watts      = isGravity ? 0 : qty * p.zones * 35;
+    return { qty, fr:'Coming Soon', model:blockName, desc:descCurve(p),
+      listPrice:'—', length:ftStr(qty * arcIn), _lenIn:qty * arcIn,
+      zones:zonesCt, carriers, cards, grail,
+      flatBlack:isGravity ? `0'` : `${ceilFt(fbIn)}'`, _fbIn:fbIn,
+      supports:qty * supportsPerUnit, covers, obands, watts, totalPrice:'—' };
+  }
+
+  // ── Divert / Merge / ModoSort30 ──
+  if (type === 'divert') {
+    const p = parseDivert(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isNoControl = p.controlHand === 'N' || p.protocol === '00';
+    const isMerge     = p.module === 'MG';
+    const isNumina    = p.protocol === '04';
+    const totalLen    = 3 * p.zoneLength;
+    const zonesCt     = isNoControl ? 0 : qty * 3;
+    let cardsPerUnit  = 0;
+    if (!isNoControl) { cardsPerUnit = isMerge ? 4 : isNumina ? 6 : 5; }
+    const fbIn        = qty * 2 * totalLen;
+    const covers      = qty * 3 * (dressed ? 2 : 1);
+    const watts       = isNoControl ? 0 : qty * (isMerge ? 140 : 260);
+    return { qty, fr:'Coming Soon', model:blockName, desc:descDivert(p),
+      listPrice:'—', length:ftStr(qty * totalLen), _lenIn:qty * totalLen,
+      zones:zonesCt, carriers:0, cards:qty * cardsPerUnit, grail:0,
+      flatBlack:`${ceilFt(fbIn)}'`, _fbIn:fbIn,
+      supports:qty * 4, covers, obands:qty * 30, watts, totalPrice:'—' };
+  }
+
+  // ── Transfer (ModoSort90 / ModoX90) ──
+  if (type === 'transfer') {
+    const p = parseTransfer(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isNoControl = p.controlHand === 'N' || p.protocol === '00';
+    const isNumina    = p.protocol === '04';
+    const cards       = isNoControl ? 0 : qty * (isNumina ? 3 : 2);
+    const fbIn        = qty * 2 * p.zoneLength;
+    const covers      = qty * 1 * (dressed ? 2 : 1);
+    const watts       = isNoControl ? 0 : qty * 225;
+    return { qty, fr:'Coming Soon', model:blockName, desc:descTransfer(p),
+      listPrice:'—', length:ftStr(qty * p.zoneLength), _lenIn:qty * p.zoneLength,
+      zones:isNoControl ? 0 : qty, carriers:0, cards, grail:0,
+      flatBlack:`${ceilFt(fbIn)}'`, _fbIn:fbIn,
+      supports:qty * 3, covers, obands:qty * 20, watts, totalPrice:'—' };
+  }
+
+  // ── Gate ──
+  if (type === 'gate') {
+    const p = parseGate(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isNoControl = p.controlHand === 'N' || p.zones === 0;
+    const totalLen    = p.arm + p.tangent;
+    const fbIn        = qty * 2 * totalLen;
+    const covers      = qty * 2 * (dressed ? 2 : 1);
+    const watts       = isNoControl ? 0 : qty * p.zones * 35;
+    return { qty, fr:'Coming Soon', model:blockName, desc:descGate(p),
+      listPrice:'—', length:ftStr(qty * totalLen), _lenIn:qty * totalLen,
+      zones:qty * p.zones, carriers:0, cards:isNoControl ? 0 : qty,
+      grail:0, flatBlack:isNoControl ? `0'` : `${ceilFt(fbIn)}'`,
+      _fbIn:isNoControl ? 0 : fbIn,
+      supports:qty * (p.zones > 0 ? p.zones * 2 : 1),
+      covers, obands:qty * p.zones * 8, watts, totalPrice:'—' };
+  }
+
+  // ── Tangent ──
+  if (type === 'tangent') {
+    const p = parseTangent(blockName);
+    if (!p) return fallbackRow(blockName, qty);
+    const isGravity  = p.power === 'G' || p.rollerType === 'GR';
+    const isPowered  = p.power === 'P';
+    const rcdIn      = 3;
+    const totalR     = Math.max(1, Math.round(p.length / rcdIn));
+    const carriers   = isPowered ? totalR - 1 : totalR;
+    const obands     = isGravity ? 0 : qty * (totalR + 1);
+    const watts      = isPowered ? qty * 35 : 0;
+    return { qty, fr:'Coming Soon', model:blockName, desc:descTangent(p),
+      listPrice:'—', length:ftStr(qty * p.length), _lenIn:qty * p.length,
+      zones:0, carriers:qty * carriers, cards:0, grail:0,
+      flatBlack:`0'`, _fbIn:0,
+      supports:0, covers:0, obands, watts, totalPrice:'—' };
+  }
+
+  // ── Fallback (should not reach here for isModoroll blocks) ──
+  return fallbackRow(blockName, qty);
+}
+
+function fallbackRow(blockName, qty) {
+  return { qty, fr:'Coming Soon', model:blockName, desc:getDescription(blockName),
+    listPrice:'—', length:'—', _lenIn:0,
+    zones:'—', carriers:'—', cards:'—', grail:'—', flatBlack:'—', _fbIn:0,
+    supports:'—', covers:'—', obands:'—', watts:'—', totalPrice:'—' };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DXF PARSER
+// ═══════════════════════════════════════════════════════════════════════════
+function parseDxf(text) {
+  const lines = text.split(/\r?\n/);
+  const tokens = [];
+  for (let i = 0; i + 1 < lines.length; i += 2) {
+    tokens.push({ code: lines[i].trim(), value: lines[i+1].trim() });
+  }
+  const inserts = [];
+  let inInsert = false, curName = '', curLayer = '0';
+  for (let i = 0; i < tokens.length; i++) {
+    const { code, value } = tokens[i];
+    if (code === '0') {
+      if (inInsert && curName) inserts.push({ name: curName, layer: curLayer });
+      inInsert = value === 'INSERT';
+      curName = ''; curLayer = '0';
+    }
+    if (inInsert) {
+      if (code === '2') curName  = value;
+      if (code === '8') curLayer = value;
+    }
+  }
+  if (inInsert && curName) inserts.push({ name: curName, layer: curLayer });
+  return inserts;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let bomRows   = [];
+let addlItems = [];
+let unkItems  = [];
+let dxfFileName = 'BOM_from_DXF';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROCESS DXF
+// ═══════════════════════════════════════════════════════════════════════════
+function processDxf(text, fileName) {
+  // Single model number drop-in (filename without .dxf is a valid model)
+  const baseName = fileName.replace(/\.dxf$/i, '');
+  if (isModoroll(baseName)) {
+    const dressed = document.getElementById('opt-dress').checked;
+    bomRows   = [deriveRow(baseName, 1, dressed)];
+    addlItems = [];
+    unkItems  = [];
+    renderAll();
+    return;
+  }
+
+  const inserts = parseDxf(text);
+  const modoCount = {}, addlCount = {}, unkCount = {};
+
+  for (const ins of inserts) {
+    const { name, layer } = ins;
+    if (!name) continue;
+    if (isModoroll(name)) {
+      modoCount[name] = (modoCount[name] || 0) + 1;
+    } else if (ADDL_LAYERS.has(layer)) {
+      if (!addlCount[name]) addlCount[name] = { qty:0, layer };
+      addlCount[name].qty++;
+    } else {
+      unkCount[name] = (unkCount[name] || 0) + 1;
+    }
+  }
+
+  const dressed = document.getElementById('opt-dress').checked;
+  bomRows = Object.entries(modoCount)
+    .sort(([a],[b]) => a.localeCompare(b))
+    .map(([name, qty]) => deriveRow(name, qty, dressed));
+
+  addlItems = Object.entries(addlCount)
+    .sort(([a],[b]) => a.localeCompare(b))
+    .map(([name, { qty, layer }]) => ({ name, layer, qty }));
+
+  unkItems = Object.entries(unkCount)
+    .sort(([a],[b]) => a.localeCompare(b))
+    .map(([name, qty]) => ({ name, qty }));
+
+  renderAll();
+}
+
+function rerenderBom() {
+  if (!bomRows.length && !addlItems.length && !unkItems.length) return;
+  const dressed = document.getElementById('opt-dress').checked;
+  bomRows = bomRows.map(r => deriveRow(r.model, r.qty, dressed));
+  renderBom();
+  renderStats();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════════
+function renderAll() {
+  renderColToggles();
+  renderStats();
+  renderBom();
+  renderAddl();
+  renderUnk();
+  document.getElementById('col-panel').style.display   = 'block';
+  document.getElementById('stats-panel').style.display = 'block';
+  document.getElementById('bom-panel').style.display   = bomRows.length ? 'block' : 'none';
+  document.getElementById('addl-panel').style.display  = addlItems.length ? 'block' : 'none';
+  document.getElementById('unk-panel').style.display   = unkItems.length  ? 'block' : 'none';
+}
+
+function renderColToggles() {
+  const wrap = document.getElementById('col-toggles');
+  wrap.innerHTML = COLS.map(c => `
+    <label class="col-toggle ${colVisible[c.key] ? '' : 'off'}" id="toggle-${c.key}">
+      <input type="checkbox" ${colVisible[c.key] ? 'checked' : ''}
+        onchange="toggleCol('${c.key}',this.checked)">
+      ${c.label}
+    </label>`).join('');
+}
+
+function toggleCol(key, visible) {
+  colVisible[key] = visible;
+  document.getElementById(`toggle-${key}`).classList.toggle('off', !visible);
+  const idx = COLS.findIndex(c => c.key === key);
+  document.querySelectorAll(
+    `.bom-table th:nth-child(${idx+1}), .bom-table td:nth-child(${idx+1})`
+  ).forEach(el => el.classList.toggle('hidden-col', !visible));
+}
+
+function renderStats() {
+  const totalQty   = bomRows.reduce((a,r) => a + r.qty, 0);
+  const totalWatts = bomRows.reduce((a,r) => a + (typeof r.watts === 'number' ? r.watts : 0), 0);
+  const totalZones = bomRows.reduce((a,r) => a + (typeof r.zones === 'number' ? r.zones : 0), 0);
+  const totalLenFt = roundFt(bomRows.reduce((a,r) => a + (r._lenIn || 0), 0));
+  const pse        = Math.ceil(totalWatts / 1320);
+  document.getElementById('stats-row').innerHTML = `
+    <span class="stat-pill">Total Qty: ${totalQty}</span>
+    <span class="stat-pill">Linear Feet: ${totalLenFt}'</span>
+    <span class="stat-pill">Zones: ${totalZones}</span>
+    <span class="stat-pill">Watts: ${totalWatts.toLocaleString()}</span>
+    <span class="stat-pill">Min PSE: ${pse}</span>
+    ${addlItems.length ? `<span class="stat-pill" style="background:#fff8e1;border-color:#ffc107;color:#856404;">Additional: ${addlItems.length}</span>` : ''}
+    ${unkItems.length  ? `<span class="stat-pill" style="background:#fdecea;border-color:#f44336;color:#b71c1c;">Unknown: ${unkItems.length}</span>`  : ''}
+  `;
+}
+
+function renderBom() {
+  const thead = document.getElementById('bom-thead');
+  const tbody = document.getElementById('bom-tbody');
+
+  thead.innerHTML = '<tr>' + COLS.map(c =>
+    `<th class="${colVisible[c.key] ? '' : 'hidden-col'}">${c.label}</th>`).join('') + '</tr>';
+
+  if (!bomRows.length) {
+    tbody.innerHTML = `<tr><td colspan="${COLS.length}" class="empty-state">No Modoroll blocks found.</td></tr>`;
+    return;
+  }
+
+  const extras     = getCheckedExtras();
+  const allPreview = [...bomRows, ...extras];
+
+  let html = allPreview.map(r => rowHtml(r)).join('');
+
+  // Totals
+  const totalLenIn = allPreview.reduce((a,r) => a + (r._lenIn || 0), 0);
+  const totalFbIn  = allPreview.reduce((a,r) => a + (r._fbIn  || 0), 0);
+  const totalWatts = allPreview.reduce((a,r) => a + (typeof r.watts    === 'number' ? r.watts    : 0), 0);
+  const totalZones = allPreview.reduce((a,r) => a + (typeof r.zones    === 'number' ? r.zones    : 0), 0);
+  const totalCards = allPreview.reduce((a,r) => a + (typeof r.cards    === 'number' ? r.cards    : 0), 0);
+  const totalGrail = allPreview.reduce((a,r) => a + (typeof r.grail    === 'number' ? r.grail    : 0), 0);
+  const totalSupp  = allPreview.reduce((a,r) => a + (typeof r.supports === 'number' ? r.supports : 0), 0);
+  const totalCov   = allPreview.reduce((a,r) => a + (typeof r.covers   === 'number' ? r.covers   : 0), 0);
+  const totalOb    = allPreview.reduce((a,r) => a + (typeof r.obands   === 'number' ? r.obands   : 0), 0);
+  const totalCarr  = allPreview.reduce((a,r) => a + (typeof r.carriers === 'number' ? r.carriers : 0), 0);
+  const totalQty   = allPreview.reduce((a,r) => a + r.qty, 0);
+
+  const totals = {
+    qty:totalQty, fr:'', model:'', desc:'', listPrice:'',
+    length:`${roundFt(totalLenIn)}'`, zones:totalZones, carriers:totalCarr,
+    cards:totalCards, grail:totalGrail, flatBlack:`${ceilFt(totalFbIn)}'`,
+    supports:totalSupp, covers:totalCov, obands:totalOb, watts:totalWatts, totalPrice:''
+  };
+
+  html += `<tr class="spacer-row"><td colspan="${COLS.length}"></td></tr>`;
+  html += '<tr class="total-row">' + COLS.map((c,i) => {
+    const v = i === 0 ? 'TOTAL' : (totals[c.key] !== undefined ? totals[c.key] : '');
+    return `<td class="${colVisible[c.key] ? '' : 'hidden-col'} ${c.numeric ? 'num' : ''}">${v}</td>`;
+  }).join('') + '</tr>';
+
+  html += '<tr class="col-desc-row">' + COLS.map(c =>
+    `<td class="${colVisible[c.key] ? '' : 'hidden-col'}" style="font-style:italic;">${c.desc}</td>`
+  ).join('') + '</tr>';
+
+  const pse = Math.ceil(totalWatts / 1320);
+  html += `<tr class="spacer-row"><td colspan="${COLS.length}"></td></tr>`;
+  html += `<tr class="spacer-row"><td colspan="${COLS.length}"></td></tr>`;
+  html += '<tr class="pse-row">' + COLS.map((c,i) => {
+    let v = '';
+    if (i === 0) v = 'Minimum 80A 480V PSE Required';
+    if (c.key === 'watts') v = pse;
+    return `<td class="${colVisible[c.key] ? '' : 'hidden-col'}">${v}</td>`;
+  }).join('') + '</tr>';
+
+  tbody.innerHTML = html;
+}
+
+function rowHtml(r) {
+  return '<tr>' + COLS.map(c => {
+    const v    = r[c.key] !== undefined ? r[c.key] : '';
+    const mono = c.key === 'model' ? ' mono' : '';
+    const num  = c.numeric ? ' num' : '';
+    return `<td class="${colVisible[c.key] ? '' : 'hidden-col'}${mono}${num}">${v}</td>`;
+  }).join('') + '</tr>';
+}
+
+function renderAddl() {
+  const tbody = document.getElementById('addl-tbody');
+  document.getElementById('addl-count').textContent =
+    `(${addlItems.length} block type${addlItems.length !== 1 ? 's' : ''})`;
+  tbody.innerHTML = addlItems.map((it, i) => `
+    <tr>
+      <td><input type="checkbox" class="include-cb" id="addl-cb-${i}" checked
+        onchange="refreshBomWithExtras()"></td>
+      <td class="num">${it.qty}</td>
+      <td class="mono">${it.name}</td>
+      <td><span style="font-size:0.75rem;background:#e8f5e9;padding:0.1rem 0.4rem;border-radius:10px;color:#2d5016;">${it.layer}</span></td>
+      <td>${it.name}</td>
+    </tr>`).join('');
+}
+
+function renderUnk() {
+  const tbody = document.getElementById('unk-tbody');
+  document.getElementById('unk-count').textContent =
+    `(${unkItems.length} block type${unkItems.length !== 1 ? 's' : ''})`;
+  tbody.innerHTML = unkItems.map((it, i) => `
+    <tr>
+      <td><input type="checkbox" class="include-cb" id="unk-cb-${i}"
+        onchange="refreshBomWithExtras()"></td>
+      <td class="num">${it.qty}</td>
+      <td class="mono">${it.name}</td>
+      <td>${it.name}</td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXTRAS (checked addl + unknown rows)
+// ═══════════════════════════════════════════════════════════════════════════
+function getCheckedExtras() {
+  const extras = [];
+  addlItems.forEach((it, i) => {
+    if (document.getElementById(`addl-cb-${i}`)?.checked) {
+      extras.push({ qty:it.qty, fr:'—', model:it.name, desc:it.name,
+        listPrice:'—', length:'—', _lenIn:0, zones:'—', carriers:'—',
+        cards:'—', grail:'—', flatBlack:'—', _fbIn:0,
+        supports:'—', covers:'—', obands:'—', watts:'—', totalPrice:'—' });
+    }
+  });
+  unkItems.forEach((it, i) => {
+    if (document.getElementById(`unk-cb-${i}`)?.checked) {
+      extras.push({ qty:it.qty, fr:'—', model:it.name, desc:it.name,
+        listPrice:'—', length:'—', _lenIn:0, zones:'—', carriers:'—',
+        cards:'—', grail:'—', flatBlack:'—', _fbIn:0,
+        supports:'—', covers:'—', obands:'—', watts:'—', totalPrice:'—' });
+    }
+  });
+  return extras;
+}
+
+function refreshBomWithExtras() {
+  renderBom();
+  renderStats();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// XLSX EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+function exportXlsx() {
+  const visibleCols = COLS.filter(c => colVisible[c.key]);
+  const headers     = visibleCols.map(c => c.label);
+  const allRows     = [...bomRows, ...getCheckedExtras()];
+  if (!allRows.length) { showMsg('No data to export.', 'warning'); return; }
+
+  const dataRows = allRows.map(r => visibleCols.map(c => {
+    const v = r[c.key];
+    return v !== undefined ? v : '';
+  }));
+
+  const totalLenIn = allRows.reduce((a,r) => a + (r._lenIn || 0), 0);
+  const totalFbIn  = allRows.reduce((a,r) => a + (r._fbIn  || 0), 0);
+  const totalWatts = allRows.reduce((a,r) => a + (typeof r.watts === 'number' ? r.watts : 0), 0);
+
+  const noSumKeys = new Set(['fr','model','desc','listPrice','length','flatBlack','totalPrice']);
+  const totalRow  = visibleCols.map((c, i) => {
+    if (i === 0) return 'TOTAL';
+    if (noSumKeys.has(c.key)) {
+      if (c.key === 'length')    return `${roundFt(totalLenIn)}'`;
+      if (c.key === 'flatBlack') return `${ceilFt(totalFbIn)}'`;
+      return '';
+    }
+    return allRows.reduce((a,r) => a + (typeof r[c.key] === 'number' ? r[c.key] : 0), 0);
+  });
+
+  const pse    = Math.ceil(totalWatts / 1320);
+  const pseRow = visibleCols.map((c, i) => {
+    if (i === 0) return 'Minimum 80A 480V PSE Required';
+    if (c.key === 'watts') return pse;
+    return '';
+  });
+
+  const wsData = [headers, ...dataRows, [], [], totalRow, [], [], pseRow];
+  const ws     = XLSX.utils.aoa_to_sheet(wsData);
+  const widthMap = {
+    qty:6, fr:14, model:36, desc:60, listPrice:16, length:14,
+    zones:7, carriers:10, cards:8, grail:8, flatBlack:16,
+    supports:10, covers:8, obands:8, watts:8, totalPrice:16
+  };
+  ws['!cols'] = visibleCols.map(c => ({ wch: widthMap[c.key] || 12 }));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'BOM');
+
+  const now    = new Date();
+  const ts     = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+  const outName = `${dxfFileName}_${ts}.xlsx`;
+  XLSX.writeFile(wb, outName);
+  showMsg(`Downloaded: ${outName}`, 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════════════════════════════════
+function handleFile(file) {
+  if (!file || !file.name.toLowerCase().endsWith('.dxf')) {
+    showMsg('Please provide a valid .dxf file.', 'error'); return;
+  }
+  dxfFileName = file.name.replace(/\.dxf$/i, '');
+  document.getElementById('file-name').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      processDxf(e.target.result, file.name);
+      showMsg(`Parsed "${file.name}" successfully.`, 'success');
+    } catch(err) {
+      showMsg(`Error parsing DXF: ${err.message}`, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  handleFile(e.dataTransfer.files[0]);
+});
+document.getElementById('file-input').addEventListener('change', e => {
+  handleFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════
+function showMsg(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = `message show ${type}`;
+  setTimeout(() => el.classList.remove('show'), 6000);
+}
+
+function clearAll() {
+  bomRows = []; addlItems = []; unkItems = []; dxfFileName = 'BOM_from_DXF';
+  document.getElementById('file-name').textContent = '';
+  ['col-panel','stats-panel','bom-panel','addl-panel','unk-panel']
+    .forEach(id => document.getElementById(id).style.display = 'none');
+  showMsg('Cleared.', 'success');
+}
+
+function toggleSection(bodyId, chevronId) {
+  const body   = document.getElementById(bodyId);
+  const chev   = document.getElementById(chevronId);
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  chev.textContent   = hidden ? '▼' : '▶';
+}
+</script>
+</body>
+</html>

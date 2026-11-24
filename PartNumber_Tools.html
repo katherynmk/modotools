@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MODOROLL List Pricing</title>
+<style>
+  :root {
+    --green:      #2e7d32;
+    --green-dark: #1b5e20;
+    --green-lt:   #c8e6c9;
+    --accent:     #4caf50;
+    --white:      #ffffff;
+    --panel-bg:   rgba(255,255,255,0.97);
+    --text:       #1a1a1a;
+    --muted:      #555;
+    --border:     #c8e6c9;
+    --changed:    #fffde7;
+    --changed-b:  #f9a825;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: #111 url("img/formicbg.png") center/cover fixed;
+    min-height: 100vh;
+    padding-top: 0;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,40,0,0.72);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,30,10,0.96);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 8px 24px;
+  }
+  nav a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 2px;
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+  }
+  nav a:hover { color: #fff; }
+  nav a.active { color: var(--accent); border-color: var(--accent); }
+  /* ── LOGO BAR ── */
+  .logo-bar {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px 0 8px;
+  }
+  .logo-bar img { height: 52px; }
+
+  
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 14px 0 22px;
+  }
+  .hero h1 {
+    font-size: 26px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+  }
+  .hero p {
+    color: #a5d6a7;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  /* ── PAGE WRAP ── */
+  .page-wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px 40px;
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--panel-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .panel-header {
+    background: var(--green);
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 9px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+  .panel-body { padding: 14px 16px; }
+
+  /* ── TABS ── */
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    padding: 14px 16px 0;
+    border-bottom: 2px solid var(--green);
+    background: var(--panel-bg);
+    border-radius: 8px 8px 0 0;
+  }
+  .tab-btn {
+    padding: 7px 18px;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    background: #f1f8e9;
+    color: var(--green-dark);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .tab-btn:hover { background: var(--green-lt); }
+  .tab-btn.active { background: var(--green); color: #fff; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── CONTROLS ── */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f9fbe7;
+    border-bottom: 1px solid var(--border);
+  }
+  .controls input[type=text], .controls select {
+    padding: 6px 10px;
+    border: 1px solid #aed581;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #fff;
+    color: var(--text);
+    min-width: 160px;
+  }
+  .controls label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .bf-filter { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .bf-btn {
+    padding: 4px 10px;
+    border: 1px solid #aed581;
+    border-radius: 12px;
+    background: #f1f8e9;
+    color: var(--green-dark);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .bf-btn:hover { background: var(--green-lt); }
+  .bf-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+
+  /* ── TABLE ── */
+  .tbl-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    table-layout: fixed;
+  }
+  thead th {
+    background: var(--green-dark);
+    color: #fff;
+    padding: 8px 4px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    white-space: normal;
+    word-break: break-word;
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th:hover { background: var(--green); }
+  thead th.sort-asc::after  { content: ' ▲'; font-size: 9px; }
+  thead th.sort-desc::after { content: ' ▼'; font-size: 9px; }
+  tbody tr { background: #ffffff; }
+  tbody tr:nth-child(even) { background: #f9fbe7; }
+  tbody tr:hover { background: #e8f5e9; }
+  tbody td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #e8f5e9;
+    vertical-align: middle;
+  }
+  td.price { font-weight: 700; color: var(--green-dark); text-align: center; }
+  td.price-var { }
+  td.changed { background: var(--changed); border-left: 3px solid var(--changed-b); }
+  td.part-num { font-family: monospace; font-size: 11px; color: #555; }
+  .cat-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--green-lt);
+    color: var(--green-dark);
+    white-space: nowrap;
+  }
+  .row-count { font-size: 11px; color: var(--muted); padding: 6px 16px 10px; }
+
+  /* ── LEGEND ── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    padding: 8px 16px;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    background: #fafafa;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-swatch {
+    width: 14px; height: 14px; border-radius: 3px;
+    border: 1px solid #ccc;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="BOM_Generator_Unified.html">Models</a>
+  <a href="Kit_Tools.html">Kits</a>
+  <a href="PartNumber_Tools.html" class="active">Parts</a>
+  <a href="Resources.html">Docs/Worksheets</a>
+  <a href="Calcs.html">Checks/Calcs</a>
+</nav>
+<div class="logo-bar">
+  <a href="index.html"><img src="img/MRHeader.png" alt="MODOROLL"></a>
+</div>
+
+<div class="hero">
+  <h1>List Pricing</h1>
+  <p>MODOROLL MDR Conveyor System</p>
+</div>
+
+<div class="page-wrap">
+
+  <!-- TABS -->
+  <div class="panel" style="padding:0;">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('straights',this)">📦 Straights MDR</button>
+      <button class="tab-btn" onclick="switchTab('curves',this)">↩️ Curves MDR</button>
+      <button class="tab-btn" onclick="switchTab('modox',this)">🔀 ModoX</button>
+      <button class="tab-btn" onclick="switchTab('gates',this)">🚧 Gates</button>
+      <button class="tab-btn" onclick="switchTab('spurs',this)">↗️ Floating Spurs</button>
+      <button class="tab-btn" onclick="switchTab('accessories',this)">🔧 Accessories &amp; Kits</button>
+    </div>
+
+    <!-- ── STRAIGHTS TAB ── -->
+    <div id="tab-straights" class="tab-content active">
+      <div class="controls">
+        <div>
+          <label>Search: </label>
+          <input type="text" id="str-search" placeholder="Rail length, zone, BF…" oninput="filterStraights()">
+        </div>
+        <div class="bf-filter">
+          <label>BF:&nbsp;</label>
+          <button class="bf-btn active" data-bf="all" onclick="setBF(this)">All</button>
+          <button class="bf-btn" data-bf="15" onclick="setBF(this)">15"</button>
+          <button class="bf-btn" data-bf="18" onclick="setBF(this)">18"</button>
+          <button class="bf-btn" data-bf="21" onclick="setBF(this)">21"</button>
+          <button class="bf-btn" data-bf="24" onclick="setBF(this)">24"</button>
+          <button class="bf-btn" data-bf="27" onclick="setBF(this)">27"</button>
+          <button class="bf-btn" data-bf="30" onclick="setBF(this)">30"</button>
+          <button class="bf-btn" data-bf="33" onclick="setBF(this)">33"</button>
+          <button class="bf-btn" data-bf="36" onclick="setBF(this)">36"</button>
+        </div>
+        <div>
+          <label>Zone: </label>
+          <select id="str-zone" onchange="filterStraights()">
+            <option value="all">All Zones</option>
+            <option value="24">24" Zone</option>
+            <option value="30">30" Zone</option>
+            <option value="36">36" Zone</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table id="str-table">
+          <colgroup>
+            <col style="width:6%"><!-- BF Width -->
+            <col style="width:18%"><!-- Bed Configuration -->
+            <col style="width:7%"><!-- Rail Length -->
+            <col style="width:5%"><!-- Zones -->
+            <col style="width:7%"><!-- Zone Length -->
+            <col style="width:7%"><!-- O-Band + RSL -->
+            <col style="width:7%"><!-- O-Band + RSH -->
+            <col style="width:7%"><!-- O-Band + C2 -->
+            <col style="width:9%"><!-- O-Band + C2 + RSH -->
+            <col style="width:7%"><!-- Poly-V -->
+            <col style="width:7%"><!-- Poly-V + C2 -->
+            <col style="width:6%"><!-- FWB -->
+            <col style="width:7%"><!-- FWB + RSH -->
+          </colgroup>
+          <thead>
+            <tr>
+              <th onclick="sortTable('str-table',0)">BF Width</th>
+              <th onclick="sortTable('str-table',1)">Bed Configuration</th>
+              <th onclick="sortTable('str-table',2)">Rail Length</th>
+              <th onclick="sortTable('str-table',3)">Zones</th>
+              <th onclick="sortTable('str-table',4)">Zone Length</th>
+              <th onclick="sortTable('str-table',5)">O-Band + RSL</th>
+              <th onclick="sortTable('str-table',6)">O-Band + RSH</th>
+              <th onclick="sortTable('str-table',7)">O-Band + C2</th>
+              <th onclick="sortTable('str-table',8)">O-Band + C2 + RSH</th>
+              <th onclick="sortTable('str-table',9)">Poly-V</th>
+              <th onclick="sortTable('str-table',10)">Poly-V + C2</th>
+              <th onclick="sortTable('str-table',11)">FWB</th>
+              <th onclick="sortTable('str-table',12)">FWB + RSH</th>
+            </tr>
+          </thead>
+          <tbody id="str-body"></tbody>
+        </table>
+      </div>
+      <div class="row-count" id="str-count"></div>
+    </div>
+    </div>
+
+    <!-- ── ACCESSORIES TAB ── -->
+    <div id="tab-accessories" class="tab-content">
+      <div class="controls">
+        <div>
+          <label>Search: </label>
+          <input type="text" id="acc-search" placeholder="Part number, description, category…" oninput="filterAcc()">
+        </div>
+        <div>
+          <label>Category: </label>
+          <select id="acc-cat" onchange="filterAcc()">
+            <option value="all">All Categories</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table id="acc-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable('acc-table',0)">Category</th>
+              <th onclick="sortTable('acc-table',1)">Part Number</th>
+              <th onclick="sortTable('acc-table',2)">Description</th>
+              <th onclick="sortTable('acc-table',3)">List Price</th>
+            </tr>
+          </thead>
+          <tbody id="acc-body"></tbody>
+        </table>
+      </div>
+      <div class="row-count" id="acc-count"></div>
+    </div>
+
+    <!-- ── CURVES TAB ── -->
+    <div id="tab-curves" class="tab-content">
+      <div class="tbl-wrap" style="padding:16px;">
+        <table id="crv-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable('crv-table',0)">Description</th>
+              <th onclick="sortTable('crv-table',1)">O-Band / RSL</th>
+              <th onclick="sortTable('crv-table',2)">RSH</th>
+              <th onclick="sortTable('crv-table',3)">C2</th>
+              <th onclick="sortTable('crv-table',4)">C2 + RSH</th>
+            </tr>
+          </thead>
+          <tbody id="crv-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <!-- ModoX Tab -->
+    <div id="tab-modox" class="tab-content">
+      <div class="tbl-wrap" style="padding:16px;">
+        <table id="mx-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable('mx-table',0)">Section</th>
+              <th onclick="sortTable('mx-table',1)">Model</th>
+              <th onclick="sortTable('mx-table',2)">15"BF</th>
+              <th onclick="sortTable('mx-table',3)">18"BF</th>
+              <th onclick="sortTable('mx-table',4)">21"BF</th>
+              <th onclick="sortTable('mx-table',5)">24"BF</th>
+              <th onclick="sortTable('mx-table',6)">27"BF</th>
+            </tr>
+          </thead>
+          <tbody id="mx-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Gates Tab -->
+    <div id="tab-gates" class="tab-content">
+      <div class="tbl-wrap" style="padding:16px;">
+        <table id="gt-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable('gt-table',0)">Model</th>
+              <th onclick="sortTable('gt-table',1)">15"BF</th>
+              <th onclick="sortTable('gt-table',2)">18"BF</th>
+              <th onclick="sortTable('gt-table',3)">21"BF</th>
+              <th onclick="sortTable('gt-table',4)">24"BF</th>
+              <th onclick="sortTable('gt-table',5)">27"BF</th>
+              <th onclick="sortTable('gt-table',6)">30"BF</th>
+              <th onclick="sortTable('gt-table',7)">33"BF</th>
+              <th onclick="sortTable('gt-table',8)">36"BF</th>
+            </tr>
+          </thead>
+          <tbody id="gt-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Floating Spurs Tab -->
+    <div id="tab-spurs" class="tab-content">
+      <div class="tbl-wrap" style="padding:16px;">
+        <table id="sp-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable('sp-table',0)">Model</th>
+              <th onclick="sortTable('sp-table',1)">15"BF</th>
+              <th onclick="sortTable('sp-table',2)">18"BF</th>
+              <th onclick="sortTable('sp-table',3)">21"BF</th>
+              <th onclick="sortTable('sp-table',4)">24"BF</th>
+              <th onclick="sortTable('sp-table',5)">27"BF</th>
+            </tr>
+          </thead>
+          <tbody id="sp-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- end panel -->
+</div><!-- end page-wrap -->
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+
+// Straights: [bf, bedConfig, railLen, zones, zoneLen, listPrice, changed]
+// changed = true if price was updated from v1.2
+const STRAIGHTS = [
+// [bf, bedConfig, railLen, zones, zoneLen, RSL, RSH, C2, C2+RSH, PolyV, PolyV+C2, FWB, FWB+RSH]
+  [15,'120" 4-Zone Bed (30" Zone)','120"',4,'30" zone',4450,4750,5100,5400,4750,5400,5450,5750],
+  [15,'60" 2-Zone Bed (30" Zone)','60"',2,'30" zone',2400,2550,2750,2900,2550,2900,2900,3050],
+  [15,'30" 1-Zone Bed (30" Zone)','30"',1,'30" zone',1400,1500,1600,1650,1500,1650,1650,1750],
+  [15,'144" 4-Zone Bed (36" Zone)','144"',4,'36" zone',4900,5200,5550,5850,5200,5850,5900,6200],
+  [15,'72" 2-Zone Bed (36" Zone)','72"',2,'36" zone',2550,2700,2900,3050,2700,3050,3050,3200],
+  [15,'36" 1-Zone Bed (36" Zone)','36"',1,'36" zone',1550,1650,1750,1800,1650,1800,1800,1900],
+  [15,'96" 4-Zone Bed (24" Zone)','96"',4,'24" zone',4250,4550,4900,5200,4550,5200,5250,5550],
+  [15,'48" 2-Zone Bed (24" Zone)','48"',2,'24" zone',2200,2350,2550,2700,2350,2700,2700,2850],
+  [15,'24" 1-Zone Bed (24" Zone)','24"',1,'24" zone',1350,1450,1550,1600,1450,1600,1600,1700],
+  [15,'144" 6-Zone Bed (24" Zone)','144"',6,'24" zone',6200,6650,7200,7650,6650,7650,7700,8150],
+  [18,'120" 4-Zone Bed (30" Zone)','120"',4,'30" zone',4500,4800,5150,5450,4800,5450,5500,5800],
+  [18,'60" 2-Zone Bed (30" Zone)','60"',2,'30" zone',2450,2600,2800,2950,2600,2950,2950,3100],
+  [18,'30" 1-Zone Bed (30" Zone)','30"',1,'30" zone',1450,1550,1650,1700,1550,1700,1700,1800],
+  [18,'144" 4-Zone Bed (36" Zone)','144"',4,'36" zone',4950,5250,5600,5900,5250,5900,5950,6250],
+  [18,'72" 2-Zone Bed (36" Zone)','72"',2,'36" zone',2600,2750,2950,3100,2750,3100,3100,3250],
+  [18,'36" 1-Zone Bed (36" Zone)','36"',1,'36" zone',1600,1700,1800,1850,1700,1850,1850,1950],
+  [18,'96" 4-Zone Bed (24" Zone)','96"',4,'24" zone',4300,4600,4950,5250,4600,5250,5300,5600],
+  [18,'48" 2-Zone Bed (24" Zone)','48"',2,'24" zone',2250,2400,2600,2750,2400,2750,2750,2900],
+  [18,'24" 1-Zone Bed (24" Zone)','24"',1,'24" zone',1400,1500,1600,1650,1500,1650,1650,1750],
+  [18,'144" 6-Zone Bed (24" Zone)','144"',6,'24" zone',6250,6700,7250,7700,6700,7700,7750,8200],
+  [21,'120" 4-Zone Bed (30" Zone)','120"',4,'30" zone',4500,4800,5150,5450,4800,5450,5500,5800],
+  [21,'60" 2-Zone Bed (30" Zone)','60"',2,'30" zone',2450,2600,2800,2950,2600,2950,2950,3100],
+  [21,'30" 1-Zone Bed (30" Zone)','30"',1,'30" zone',1450,1550,1650,1700,1550,1700,1700,1800],
+  [21,'144" 4-Zone Bed (36" Zone)','144"',4,'36" zone',4950,5250,5600,5900,5250,5900,5950,6250],
+  [21,'72" 2-Zone Bed (36" Zone)','72"',2,'36" zone',2600,2750,2950,3100,2750,3100,3100,3250],
+  [21,'36" 1-Zone Bed (36" Zone)','36"',1,'36" zone',1600,1700,1800,1850,1700,1850,1850,1950],
+  [21,'96" 4-Zone Bed (24" Zone)','96"',4,'24" zone',4350,4650,5000,5300,4650,5300,5350,5650],
+  [21,'48" 2-Zone Bed (24" Zone)','48"',2,'24" zone',2250,2400,2600,2750,2400,2750,2750,2900],
+  [21,'24" 1-Zone Bed (24" Zone)','24"',1,'24" zone',1400,1500,1600,1650,1500,1650,1650,1750],
+  [21,'144" 6-Zone Bed (24" Zone)','144"',6,'24" zone',6300,6750,7300,7750,6750,7750,7800,8250],
+  [24,'120" 4-Zone Bed (30" Zone)','120"',4,'30" zone',4550,4850,5200,5500,4850,5500,5550,5850],
+  [24,'60" 2-Zone Bed (30" Zone)','60"',2,'30" zone',2500,2650,2850,3000,2650,3000,3000,3150],
+  [24,'30" 1-Zone Bed (30" Zone)','30"',1,'30" zone',1450,1550,1650,1700,1550,1700,1700,1800],
+  [24,'144" 4-Zone Bed (36" Zone)','144"',4,'36" zone',5000,5300,5650,5950,5300,5950,6000,6300],
+  [24,'72" 2-Zone Bed (36" Zone)','72"',2,'36" zone',2600,2750,2950,3100,2750,3100,3100,3250],
+  [24,'36" 1-Zone Bed (36" Zone)','36"',1,'36" zone',1600,1700,1800,1850,1700,1850,1850,1950],
+  [24,'96" 4-Zone Bed (24" Zone)','96"',4,'24" zone',4400,4700,5050,5350,4700,5350,5400,5700],
+  [24,'48" 2-Zone Bed (30" Zone)','48"',2,'24" zone',2250,2400,2600,2750,2400,2750,2750,2900],
+  [24,'24" 1-Zone Bed (24" Zone)','24"',1,'24" zone',1400,1500,1600,1650,1500,1650,1650,1750],
+  [24,'144" 6-Zone Bed (24" Zone)','144"',6,'24" zone',6350,6800,7350,7800,6800,7800,7850,8300],
+  [27,'120" 4-Zone Bed (30" Zone)','120"',4,'30" zone',4550,4850,5200,5500,4850,5500,5550,5850],
+  [27,'60" 2-Zone Bed (30" Zone)','60"',2,'30" zone',2500,2650,2850,3000,2650,3000,3000,3150],
+  [27,'30" 1-Zone Bed (30" Zone)','30"',1,'30" zone',1450,1550,1650,1700,1550,1700,1700,1800],
+  [27,'144" 4-Zone Bed (36" Zone)','144"',4,'36" zone',5000,5300,5650,5950,5300,5950,6000,6300],
+  [27,'72" 2-Zone Bed (36" Zone)','72"',2,'36" zone',2600,2750,2950,3100,2750,3100,3100,3250],
+  [27,'36" 1-Zone Bed (36" Zone)','36"',1,'36" zone',1600,1700,1800,1850,1700,1850,1850,1950],
+  [27,'96" 4-Zone Bed (24" Zone)','96"',4,'24" zone',4400,4700,5050,5350,4700,5350,5400,5700],
+  [27,'48" 2-Zone Bed (30" Zone)','48"',2,'24" zone',2250,2400,2600,2750,2400,2750,2750,2900],
+  [27,'24" 1-Zone Bed (24" Zone)','24"',1,'24" zone',1400,1500,1600,1650,1500,1650,1650,1750],
+  [27,'144" 6-Zone Bed (24" Zone)','144"',6,'24" zone',6350,6800,7350,7800,6800,7800,7850,8300],
+  [30,'120" 4-Zone Bed (30" Zone)','120"',4,'30" zone',4600,4900,5250,5550,4900,5550,5600,5900],
+  [30,'60" 2-Zone Bed (30" Zone)','60"',2,'30" zone',2550,2700,2900,3050,2700,3050,3050,3200],
+  [30,'30" 1-Zone Bed (30" Zone)','30"',1,'30" zone',1500,1600,1700,1750,1600,1750,1750,1850],
+  [30,'144" 4-Zone Bed (36" Zone)','144"',4,'36" zone',5050,5350,5700,6000,5350,6000,6050,6350],
+  [30,'72" 2-Zone Bed (36" Zone)','72"',2,'36" zone',2650,2800,3000,3150,2800,3150,3150,3300],
+  [30,'36" 1-Zone Bed (36" Zone)','36"',1,'36" zone',1650,1750,1850,1900,1750,1900,1900,2000],
+  [30,'96" 4-Zone Bed (24" Zone)','96"',4,'24" zone',4450,4750,5100,5400,4750,5400,5450,5750],
+  [30,'48" 2-Zone Bed (30" Zone)','48"',2,'24" zone',2300,2450,2650,2800,2450,2800,2800,2950],
+  [30,'24" 1-Zone Bed (24" Zone)','24"',1,'24" zone',1400,1500,1600,1650,1500,1650,1650,1750],
+  [30,'144" 6-Zone Bed (24" Zone)','144"',6,'24" zone',6400,6850,7400,7850,6850,7850,7900,8350],
+  [33,'120" 4-Zone Bed (30" Zone)','120"',4,'30" zone',4600,4900,5250,5550,4900,5550,5600,5900],
+  [33,'60" 2-Zone Bed (30" Zone)','60"',2,'30" zone',2550,2700,2900,3050,2700,3050,3050,3200],
+  [33,'30" 1-Zone Bed (30" Zone)','30"',1,'30" zone',1500,1600,1700,1750,1600,1750,1750,1850],
+  [33,'144" 4-Zone Bed (36" Zone)','144"',4,'36" zone',5050,5350,5700,6000,5350,6000,6050,6350],
+  [33,'72" 2-Zone Bed (36" Zone)','72"',2,'36" zone',2650,2800,3000,3150,2800,3150,3150,3300],
+  [33,'36" 1-Zone Bed (36" Zone)','36"',1,'36" zone',1650,1750,1850,1900,1750,1900,1900,2000],
+  [33,'96" 4-Zone Bed (24" Zone)','96"',4,'24" zone',4500,4800,5150,5450,4800,5450,5500,5800],
+  [33,'48" 2-Zone Bed (30" Zone)','48"',2,'24" zone',2300,2450,2650,2800,2450,2800,2800,2950],
+  [33,'24" 1-Zone Bed (24" Zone)','24"',1,'24" zone',1400,1500,1600,1650,1500,1650,1650,1750],
+  [33,'144" 6-Zone Bed (24" Zone)','144"',6,'24" zone',6450,6900,7450,7900,6900,7900,7950,8400],
+  [36,'120" 4-Zone Bed (30" Zone)','120"',4,'30" zone',4650,4950,5300,5600,4950,5600,5650,5950],
+  [36,'60" 2-Zone Bed (30" Zone)','60"',2,'30" zone',2600,2750,2950,3100,2750,3100,3100,3250],
+  [36,'30" 1-Zone Bed (30" Zone)','30"',1,'30" zone',1500,1600,1700,1750,1600,1750,1750,1850],
+  [36,'144" 4-Zone Bed (36" Zone)','144"',4,'36" zone',5100,5400,5750,6050,5400,6050,6100,6400],
+  [36,'72" 2-Zone Bed (36" Zone)','72"',2,'36" zone',2650,2800,3000,3150,2800,3150,3150,3300],
+  [36,'36" 1-Zone Bed (36" Zone)','36"',1,'36" zone',1650,1750,1850,1900,1750,1900,1900,2000],
+  [36,'96" 4-Zone Bed (24" Zone)','96"',4,'24" zone',4550,4850,5200,5500,4850,5500,5550,5850],
+  [36,'48" 2-Zone Bed (30" Zone)','48"',2,'24" zone',2300,2450,2650,2800,2450,2800,2800,2950],
+  [36,'24" 1-Zone Bed (24" Zone)','24"',1,'24" zone',1400,1500,1600,1650,1500,1650,1650,1750],
+  [36,'144" 6-Zone Bed (24" Zone)','144"',6,'24" zone',6500,6950,7500,7950,6950,7950,8000,8450]
+];
+
+const ACCESSORIES = [
+  ["Guard Rail",null,"FLIPRAIL GUARD RAIL Pair (Standard Photo Eye Locations) \u2014 60\" 1\u00be\" Tall (2) 30\" Zone",250],
+  ["Guard Rail",null,"FLIPRAIL GUARD RAIL Pair (Standard Photo Eye Locations) \u2014 72\" 1\u00be\" Tall (2) 36\" Zone",250],
+  ["Guard Rail",null,"FLIPRAIL GUARD RAIL Pair (Standard Photo Eye Locations) \u2014 72\" 1\u00be\" Tall (3) 24\" Zone",250],
+  ["Guard Rail",null,"FLIPRAIL GUARD RAIL Channel w/o Photo Eyes \u2014 60\" 1\u00be\" Tall",50],
+  ["Guard Rail",null,"FLIPRAIL GUARD RAIL Channel w/o Photo Eyes \u2014 60\" 3\" Tall",100],
+  ["Guard Rail",null,"FLIPRAIL GUARD RAIL Channel w/o Photo Eyes \u2014 72\" 1\u00be\" Tall",50],
+  ["Guard Rail",null,"FLIPRAIL GUARD RAIL Channel w/o Photo Eyes \u2014 72\" 3\" Tall",100],
+  ["Guard Rail",null,"M Series Guard Rail (Flared Channel) \u2014 60\"/72\" 6\" Tall",150],
+  ["Guard Rail",null,"M Series Guard Rail (Flared Channel) \u2014 60\"/72\" 12\" Tall",200],
+  ["Guard Rail",null,"M Series Guard Rail (Flared Channel) \u2014 60\"/72\" 18\" Tall",250],
+  ["Guard Rail",null,"M Series Guard Rail (Flared Channel) \u2014 60\"/72\" 24\" Tall",300],
+  ["Guard Rail",null,"M Series Guard Rail (Channel) \u2014 60\"/72\" 3\" Tall",50],
+  ["Guard Rail",null,"M Series Guard Rail (Channel) \u2014 60\"/72\" 6\" Tall",100],
+  ["Guard Rail",null,"M Series Guard Rail (Channel) \u2014 60\"/72\" 12\" Tall",150],
+  ["Guard Rail",null,"M Series Guard Rail (Channel) \u2014 60\"/72\" 18\" Tall",200],
+  ["Guard Rail",null,"M Series Guard Rail (Channel) \u2014 60\"/72\" 24\" Tall",300],
+  ["Guard Rail",null,"M Series Guard Rail (Channel) \u2014 60\"/72\" 36\" Tall",400],
+  ["Electrical Kit - ZPA","CK-0100-00005","Above Frame Photo Eye Bracket Kit (ZPA)",250],
+  ["Electrical Kit - ZPA","CK-0200-0001","Start Eye Kit (ZPA)",350],
+  ["Electrical Kit - ZPA","CK-0100-0013","G10 Block Kit (Bridge)",100],
+  ["Electrical Kit - ZPA","CK-0200-0002","Line Full Eye Kit (ZPA)",450],
+  ["Electrical Kit - ZPA","CK-0100-0014","G10 Block Kit (Clamp)",100],
+  ["Electrical Kit - ZPA","CK-0100-0005","Foot Pedal Kit (ZPA)",750],
+  ["Electrical Kit - ZPA","CK-0200-0003","Cross Over Kit (X1) Left-Right Hand (ZPA)",50],
+  ["Electrical Kit - ZPA","CK-0100-0006","Green Box Push Button Kit (ZPA)",500],
+  ["Electrical Kit - ZPA","CK-0200-0004","Cross Over Kit (X2) Right-Left Hand (ZPA)",50],
+  ["Electrical Kit - ZPA","CK-0100-0007","Black Power Cable (330')",600],
+  ["Electrical Kit - ZPA","GB-0200-0001","Green Box (ZPA)",450],
+  ["Electrical Kit - ZPA","GB-0200-0002","Green Box (ZPA End of Line Kit \u2014 Waterfall/Handoff)",1200],
+  ["Electrical Kit - Full Control","CK-0600-0001","Above Frame Photo Eye Bracket Kit (Full Control)",500],
+  ["Electrical Kit - Full Control","CK-0600-0002","Start Eye Kit (Full Control)",500],
+  ["Electrical Kit - Full Control","CK-0600-0003","Line Full Eye Kit (Full Control)",550],
+  ["Electrical Kit - Full Control","CK-0600-0005","Foot Pedal Kit (Full Control)",750],
+  ["Electrical Kit - Full Control","CK-000-0004","Green Box Push Button Kit (Full Control)",500],
+  ["Electrical Kit - Full Control","GB-0600-0001","Green Box (Full Control)",750],
+  ["Electrical Kit - Full Control","CK-0600-0006","P&F Node Addresser",1500],
+  ["Electrical Kit - Full Control","CK-0600-0007","Yellow Network Cable (330')",400],
+  ["Electrical Kit - Full Control","CK-0100-0013","G10 Block Kit (Bridge)",100],
+  ["Electrical Kit - Full Control","CK-0100-0014","G10 Block Kit (Clamp)",100],
+  ["Power Supply","PS-0500-1000","120V 10 AMP PSE",1200],
+  ["Power Supply","PS-0500-1001","120V 20 AMP PSE",1500],
+  ["Power Supply","PS-0500-1002","120V 40 AMP PSE",1750],
+  ["Power Supply","PS-0500-1003","480V 80 AMP PSE",3200],
+  ["Power Supply","PS-0500-1004","480V 40 AMP PSE",2200],
+  ["Power Supply","CP-0600-1001","60 AMP Main Panel",59000],
+  ["Mechanical Accessory","HK-0500-0000","RSL/H Adapter Kit (Roller Set High/Low)",50],
+  ["Mechanical Accessory","HK-0500-0015","End Stop Kit \u2014 15\"BF",100],
+  ["Mechanical Accessory","HK-0500-0016","End Stop Kit \u2014 18\"BF",100],
+  ["Mechanical Accessory","HK-0500-0017","End Stop Kit \u2014 21\"BF",100],
+  ["Mechanical Accessory","HK-0500-0018","End Stop Kit \u2014 24\"BF",100],
+  ["Mechanical Accessory","HK-0500-0019","End Stop Kit \u2014 27\"BF",100],
+  ["Mechanical Accessory","HK-0500-0020","End Stop Kit \u2014 30\"BF",100],
+  ["Mechanical Accessory","HK-0500-0021","End Stop Kit \u2014 33\"BF",100],
+  ["Mechanical Accessory","HK-0500-0022","End Stop Kit \u2014 36\"BF",100],
+  ["Mechanical Accessory","HK-0500-0039","Wedge Bracket Kit",100],
+  ["Mechanical Accessory","HK-0001-0040","Gate Crossover Kit (AS-i)",2500],
+  ["Mechanical Accessory","HK-0002-0040","Gate Crossover Kit (ZPA)",2500],
+  ["Mechanical Accessory","HK-0003-0040","Gate Crossover Kit (MODOLINK)",2500],
+  ["Mechanical Accessory","HK-0006-0040","Gate Crossover Kit (Pulse)",2500],
+  ["Mechanical Accessory","HK-0007-0040","Gate Crossover Kit (Itoh)",2500],
+  ["Mechanical Accessory","HK-0500-0002","Incline/Decline Pivot Kit",150],
+  ["Mechanical Accessory","HK-0500-0023","End Plate Kit \u2014 15\"BF",100],
+  ["Mechanical Accessory","HK-0500-0024","End Plate Kit \u2014 18\"BF",100],
+  ["Mechanical Accessory","HK-0500-0025","End Plate Kit \u2014 21\"BF",100],
+  ["Mechanical Accessory","HK-0500-0026","End Plate Kit \u2014 24\"BF",100],
+  ["Mechanical Accessory","HK-0500-0027","End Plate Kit \u2014 27\"BF",100],
+  ["Mechanical Accessory","HK-0500-0028","End Plate Kit \u2014 30\"BF",100],
+  ["Mechanical Accessory","HK-0500-0029","End Plate Kit \u2014 33\"BF",100],
+  ["Mechanical Accessory","HK-0500-0030","End Plate Kit \u2014 36\"BF",100],
+  ["Mechanical Accessory","HK-0500-0100","Splice Bracket Kit",50],
+  ["Support",null,"Standard Support \u2014 0\u201330\" TOS",150],
+  ["Support",null,"Standard Support \u2014 30\"\u201355\" TOS",200],
+  ["Support",null,"Standard Support \u2014 55\"\u201380\" TOS",250],
+  ["Support",null,"Standard Support Single Leg \u2014 0\u201360\" TOS",300],
+  ["Support",null,"Standard Support Single Leg \u2014 60\"\u2013100\" TOS",400],
+  ["Support",null,"Multi-Tier Support (Caster Base Kit) \u2014 2.75\"\u20137\" TOS",100],
+  ["Support",null,"Multi-Tier Support (Caster Base Kit) \u2014 7\"\u201335\" TOS",100],
+  ["Support",null,"Caster Base Kit (Supports not included)",650],
+  ["Mechanical Accessory","HK-0500-0042","FLIPRAIL BELLY PAN 15BF x 12L",100],
+  ["Mechanical Accessory","HK-0500-0043","FLIPRAIL BELLY PAN 15BF x 18L",150],
+  ["Mechanical Accessory","HK-0500-0044","FLIPRAIL BELLY PAN 15BF x 24L",200],
+  ["Mechanical Accessory","HK-0500-0045","FLIPRAIL BELLY PAN 15BF x 30L",200],
+  ["Mechanical Accessory","HK-0500-0046","FLIPRAIL BELLY PAN 15BF x 36L",250],
+  ["Mechanical Accessory","HK-0500-0047","FLIPRAIL BELLY PAN 15BF x 60L",400],
+  ["Mechanical Accessory","HK-0500-0048","FLIPRAIL BELLY PAN 15BF x 72L",500],
+  ["Mechanical Accessory","HK-0500-0049","FLIPRAIL BELLY PAN 18BF x 12L",100],
+  ["Mechanical Accessory","HK-0500-0050","FLIPRAIL BELLY PAN 18BF x 18L",150],
+  ["Mechanical Accessory","HK-0500-0051","FLIPRAIL BELLY PAN 18BF x 24L",200],
+  ["Mechanical Accessory","HK-0500-0052","FLIPRAIL BELLY PAN 18BF x 30L",250],
+  ["Mechanical Accessory","HK-0500-0053","FLIPRAIL BELLY PAN 18BF x 36L",300],
+  ["Mechanical Accessory","HK-0500-0054","FLIPRAIL BELLY PAN 18BF x 60L",450],
+  ["Mechanical Accessory","HK-0500-0055","FLIPRAIL BELLY PAN 18BF x 72L",550],
+  ["Mechanical Accessory","HK-0500-0056","FLIPRAIL BELLY PAN 21BF x 12L",100],
+  ["Mechanical Accessory","HK-0500-0057","FLIPRAIL BELLY PAN 21BF x 18L",150],
+  ["Mechanical Accessory","HK-0500-0058","FLIPRAIL BELLY PAN 21BF x 24L",200],
+  ["Mechanical Accessory","HK-0500-0059","FLIPRAIL BELLY PAN 21BF x 30L",250],
+  ["Mechanical Accessory","HK-0500-0060","FLIPRAIL BELLY PAN 21BF x 36L",300],
+  ["Mechanical Accessory","HK-0500-0061","FLIPRAIL BELLY PAN 21BF x 60L",500],
+  ["Mechanical Accessory","HK-0500-0062","FLIPRAIL BELLY PAN 21BF x 72L",600],
+  ["Mechanical Accessory","HK-0500-0063","FLIPRAIL BELLY PAN 24BF x 12L",100],
+  ["Mechanical Accessory","HK-0500-0064","FLIPRAIL BELLY PAN 24BF x 18L",150],
+  ["Mechanical Accessory","HK-0500-0065","FLIPRAIL BELLY PAN 24BF x 24L",200],
+  ["Mechanical Accessory","HK-0500-0066","FLIPRAIL BELLY PAN 24BF x 30L",250],
+  ["Mechanical Accessory","HK-0500-0067","FLIPRAIL BELLY PAN 24BF x 36L",300],
+  ["Mechanical Accessory","HK-0500-0068","FLIPRAIL BELLY PAN 24BF x 60L",500],
+  ["Mechanical Accessory","HK-0500-0069","FLIPRAIL BELLY PAN 24BF x 72L",600],
+  ["Mechanical Accessory","HK-0500-0070","FLIPRAIL BELLY PAN 27BF x 12L",150],
+  ["Mechanical Accessory","HK-0500-0071","FLIPRAIL BELLY PAN 27BF x 18L",200],
+  ["Mechanical Accessory","HK-0500-0072","FLIPRAIL BELLY PAN 27BF x 24L",250],
+  ["Mechanical Accessory","HK-0500-0073","FLIPRAIL BELLY PAN 27BF x 30L",300],
+  ["Mechanical Accessory","HK-0500-0074","FLIPRAIL BELLY PAN 27BF x 36L",350],
+  ["Mechanical Accessory","HK-0500-0075","FLIPRAIL BELLY PAN 27BF x 60L",550],
+  ["Mechanical Accessory","HK-0500-0076","FLIPRAIL BELLY PAN 27BF x 72L",650],
+  ["Mechanical Accessory","HK-0500-0077","FLIPRAIL BELLY PAN 30BF x 12L",150],
+  ["Mechanical Accessory","HK-0500-0078","FLIPRAIL BELLY PAN 30BF x 18L",200],
+  ["Mechanical Accessory","HK-0500-0079","FLIPRAIL BELLY PAN 30BF x 24L",250],
+  ["Mechanical Accessory","HK-0500-0080","FLIPRAIL BELLY PAN 30BF x 30L",300],
+  ["Mechanical Accessory","HK-0500-0081","FLIPRAIL BELLY PAN 30BF x 36L",350],
+  ["Mechanical Accessory","HK-0500-0082","FLIPRAIL BELLY PAN 30BF x 60L",600],
+  ["Mechanical Accessory","HK-0500-0083","FLIPRAIL BELLY PAN 30BF x 72L",700],
+  ["Mechanical Accessory","HK-0500-0084","FLIPRAIL BELLY PAN 33BF x 12L",150],
+  ["Mechanical Accessory","HK-0500-0085","FLIPRAIL BELLY PAN 33BF x 18L",200],
+  ["Mechanical Accessory","HK-0500-0086","FLIPRAIL BELLY PAN 33BF x 24L",250],
+  ["Mechanical Accessory","HK-0500-0087","FLIPRAIL BELLY PAN 33BF x 30L",300],
+  ["Mechanical Accessory","HK-0500-0088","FLIPRAIL BELLY PAN 33BF x 36L",400],
+  ["Mechanical Accessory","HK-0500-0089","FLIPRAIL BELLY PAN 33BF x 60L",600],
+  ["Mechanical Accessory","HK-0500-0090","FLIPRAIL BELLY PAN 33BF x 72L",750],
+  ["Mechanical Accessory","HK-0500-0091","FLIPRAIL BELLY PAN 36BF x 12L",150],
+  ["Mechanical Accessory","HK-0500-0092","FLIPRAIL BELLY PAN 36BF x 18L",200],
+  ["Mechanical Accessory","HK-0500-0093","FLIPRAIL BELLY PAN 36BF x 24L",300],
+  ["Mechanical Accessory","HK-0500-0094","FLIPRAIL BELLY PAN 36BF x 30L",350],
+  ["Mechanical Accessory","HK-0500-0095","FLIPRAIL BELLY PAN 36BF x 36L",400],
+  ["Mechanical Accessory","HK-0500-0096","FLIPRAIL BELLY PAN 36BF x 60L",650],
+  ["Mechanical Accessory","HK-0500-0097","FLIPRAIL BELLY PAN 36BF x 72L",800],
+  ["Mechanical Accessory","HK-0500-0098","RSH-H 90 BED CONNECTION",150],
+  ["Mechanical Accessory","HK-0500-0099","NOSE PLOW VERSION 1",150],
+];
+
+const CURVES = [
+// [desc, base, rsh, c2, c2rsh]
+  ["90-Degree Tapered Curve",3500,3650,3850,4000],
+  ["60-Degree Tapered Curve",3000,3150,3350,3500],
+  ["45-Degree Tapered Curve",2500,2600,2700,2750],
+  ["30-Degree Tapered Curve",1750,1850,1950,2000],
+];
+
+// ── NEW PRODUCT DATA ─────────────────────────────────────────────────────────
+const MODOX = [
+// [section, model, bf15, bf18, bf21, bf24, bf27]
+  ["24\" and 30\" Zones","ModoX90 Transfer",11500,11750,12000,12250,12500],
+  ["24\" and 30\" Zones","ModoX60",15500,15750,16000,16250,16500],
+  ["24\" and 30\" Zones","ModoX30",16000,16250,16500,16750,17000],
+  ["36\" Zone","ModoX90 Transfer",12500,12750,13000,13250,13500],
+  ["36\" Zone","ModoX60",16500,16750,17000,17250,17500],
+  ["36\" Zone","ModoX30",17000,17250,17500,17750,18000],
+];
+const GATES = [
+// [model, bf15, bf18, bf21, bf24, bf27, bf30, bf33, bf36]
+  ["Gate 36-24",7000,7125,7250,7375,7500,7625,7750,7875],
+  ["Gate 48-12",8000,8125,8250,8375,8500,8625,8750,8875],
+];
+const SPURS = [
+// [model, bf15, bf18, bf21, bf24, bf27]
+  ["Floating Spur",3800,3800,3800,3800,3800],
+];
+
+// ── RENDER MODOX ─────────────────────────────────────────────────────────────
+function renderModoX() {
+  const tbody = document.getElementById('mx-body');
+  tbody.innerHTML = '';
+  MODOX.forEach(r => {
+    const tr = document.createElement('tr');
+    const isAdder = r[0].includes('+');
+    const cls = isAdder ? ' class="variant"' : '';
+    tr.innerHTML = `<td${cls}>${r[0]}</td><td${cls}>${r[1]}</td>` +
+      [r[2],r[3],r[4],r[5],r[6]].map(v => `<td class="price${isAdder?' variant':''}">${fmt(v)}</td>`).join('');
+    tbody.appendChild(tr);
+  });
+}
+
+// ── RENDER GATES ─────────────────────────────────────────────────────────────
+function renderGates() {
+  const tbody = document.getElementById('gt-body');
+  tbody.innerHTML = '';
+  GATES.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r[0]}</td>` +
+      [r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[8]].map(v => `<td class="price">${fmt(v)}</td>`).join('');
+    tbody.appendChild(tr);
+  });
+}
+
+// ── RENDER SPURS ─────────────────────────────────────────────────────────────
+function renderSpurs() {
+  const tbody = document.getElementById('sp-body');
+  tbody.innerHTML = '';
+  SPURS.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r[0]}</td>` +
+      [r[1],r[2],r[3],r[4],r[5]].map(v => `<td class="price">${fmt(v)}</td>`).join('');
+    tbody.appendChild(tr);
+  });
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+let activeBF = 'all';
+
+function fmt(n) {
+  return n != null ? '$' + n.toLocaleString('en-US', {minimumFractionDigits:0}) : '—';
+}
+
+function renderStraights(data) {
+  const tbody = document.getElementById('str-body');
+  tbody.innerHTML = '';
+  data.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r[0]}"BF</td>
+      <td>${r[1]}</td>
+      <td>${r[2]}</td>
+      <td style="text-align:center">${r[3]}</td>
+      <td>${r[4]}</td>
+      <td class="price">${fmt(r[5])}</td>
+      <td class="price price-var">${fmt(r[6])}</td>
+      <td class="price price-var">${fmt(r[7])}</td>
+      <td class="price price-var">${fmt(r[8])}</td>
+      <td class="price price-var">${fmt(r[9])}</td>
+      <td class="price price-var">${fmt(r[10])}</td>
+      <td class="price price-var">${fmt(r[11])}</td>
+      <td class="price price-var">${fmt(r[12])}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('str-count').textContent = `Showing ${data.length} of ${STRAIGHTS.length} items`;
+}
+
+function filterStraights() {
+  const q = document.getElementById('str-search').value.toLowerCase();
+  const zone = document.getElementById('str-zone').value;
+  let data = STRAIGHTS.filter(r => {
+    const bfMatch = activeBF === 'all' || r[0] == activeBF;
+    const zoneMatch = zone === 'all' || r[4].startsWith(zone+'"');
+    const textMatch = !q || [r[0]+'',r[1],r[2],r[3]+'',r[4],r[5]+''].join(' ').toLowerCase().includes(q);
+    return bfMatch && zoneMatch && textMatch;
+  });
+  renderStraights(data);
+}
+
+function setBF(btn) {
+  document.querySelectorAll('.bf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeBF = btn.dataset.bf;
+  filterStraights();
+}
+
+function renderAcc(data) {
+  const tbody = document.getElementById('acc-body');
+  tbody.innerHTML = '';
+  data.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="cat-badge">${r[0]}</span></td>
+      <td class="part-num">${r[1]||'—'}</td>
+      <td>${r[2]}</td>
+      <td class="price">${fmt(r[3])}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('acc-count').textContent = `Showing ${data.length} of ${ACCESSORIES.length} items`;
+}
+
+function filterAcc() {
+  const q = document.getElementById('acc-search').value.toLowerCase();
+  const cat = document.getElementById('acc-cat').value;
+  let data = ACCESSORIES.filter(r => {
+    const catMatch = cat === 'all' || r[0] === cat;
+    const textMatch = !q || [r[0],r[1]||'',r[2],r[3]+''].join(' ').toLowerCase().includes(q);
+    return catMatch && textMatch;
+  });
+  renderAcc(data);
+}
+
+function renderCurves() {
+  const tbody = document.getElementById('crv-body');
+  tbody.innerHTML = '';
+  CURVES.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r[0]}</td><td class="price">${fmt(r[1])}</td><td class="price variant">${fmt(r[2])}</td><td class="price variant">${fmt(r[3])}</td><td class="price variant">${fmt(r[4])}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── SORT ──────────────────────────────────────────────────────────────────────
+let sortState = {};
+function sortTable(tableId, col) {
+  const tbl = document.getElementById(tableId);
+  const tbody = tbl.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const key = tableId + '_' + col;
+  const asc = sortState[key] !== true;
+  sortState[key] = asc;
+
+  rows.sort((a, b) => {
+    let av = a.cells[col].textContent.replace(/[$,]/g,'').trim();
+    let bv = b.cells[col].textContent.replace(/[$,]/g,'').trim();
+    const an = parseFloat(av), bn = parseFloat(bv);
+    if (!isNaN(an) && !isNaN(bn)) return asc ? an-bn : bn-an;
+    return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+
+  // Update header arrows
+  tbl.querySelectorAll('thead th').forEach((th, i) => {
+    th.classList.remove('sort-asc','sort-desc');
+    if (i === col) th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+  });
+
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(function init() {
+  // Populate acc category dropdown
+  const cats = [...new Set(ACCESSORIES.map(r => r[0]))];
+  const sel = document.getElementById('acc-cat');
+  cats.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+
+  renderStraights(STRAIGHTS);
+  renderAcc(ACCESSORIES);
+  renderCurves();
+  renderModoX();
+  renderGates();
+  renderSpurs();
+})();
+
+
+</script>
+  <footer style="text-align:center;padding:12px 0 18px;font-size:0.78rem;color:#999;border-top:1px solid #eee;margin-top:24px;">
+    List Pricing — Version 1.61 | ModoEight © 2026
+  </footer>
+</body>
+</html>

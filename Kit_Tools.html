@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kit Tools v1 - Modoroll MODO-MARKET</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f0f4f0; color:#333; }
+
+    /* ── Header ── */
+    .header-wrap { position:fixed; inset:0 0 auto 0; z-index:9999; display:grid; grid-template-rows:auto 44px; }
+    .logo-bar { display:flex; justify-content:center; align-items:center; background:#fff; padding:10px 16px; border-bottom:1px solid #eee; filter:drop-shadow(0 4px 12px rgba(0,0,0,.04)); }
+    .logo-bar img { height:72px; width:auto; max-width:min(100%,920px); }
+    .nav-bar { display:flex; gap:24px; align-items:center; justify-content:center; background:#fff; border-bottom:1px solid #eee; overflow-x:auto; white-space:nowrap; }
+    .nav-bar a { display:inline-block; padding:10px 6px; font-weight:600; text-decoration:none; color:inherit; }
+    .nav-bar a:hover { border-bottom:2px solid #1ad51d; }
+    main { padding-top:132px; }
+
+    /* ── Hero ── */
+    .hero { position:relative; min-height:12vh; display:grid; place-items:center; text-align:center; color:#fff; overflow:clip; }
+    .hero::before { content:""; position:fixed; inset:0; background-image:url("img/formicbg.png"); background-size:cover; background-position:center; z-index:-2; transform:translateZ(0); }
+    .hero::after { content:""; position:absolute; inset:0; background:linear-gradient(to bottom,rgba(0,0,0,.45),rgba(0,0,0,.3)); z-index:-1; }
+    .hero-inner { width:min(92vw,1200px); padding:32px 16px; }
+    .hero h1 { font-size:1.8rem; margin-bottom:0.2rem; text-transform:uppercase; letter-spacing:1px; }
+    .hero p { font-size:0.9rem; opacity:0.9; }
+
+    /* ── Single-column page layout ── */
+    .page-layout { max-width:1400px; margin:1rem auto; padding:0 1rem; display:flex; flex-direction:column; gap:0.75rem; }
+
+    /* ── Shared panel style ── */
+    .panel { background:#fff; border-radius:10px; padding:0.75rem 1rem; box-shadow:0 2px 8px rgba(0,0,0,0.08); border-left:4px solid #1ad51d; }
+    .panel-title { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; }
+    .panel-title h2 { color:#006600; font-size:1.1rem; font-weight:800; }
+
+    /* ── Section header with collapse toggle ── */
+    .section-header { display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0.75rem; background:#e8f5e9; border-radius:8px; cursor:pointer; user-select:none; border:1px solid #c8e6c9; margin-bottom:0; }
+    .section-header:hover { background:#d4edda; }
+    .section-title { font-weight:800; font-size:0.95rem; color:#006600; display:flex; align-items:center; gap:0.5rem; }
+    .section-count { font-size:0.8rem; font-weight:600; color:#7cb342; margin-left:0.5rem; }
+    .collapse-btn { width:24px; height:24px; border-radius:50%; background:#7cb342; color:#fff; border:none; cursor:pointer; font-size:1rem; font-weight:800; line-height:24px; text-align:center; flex-shrink:0; transition:background 0.2s; }
+    .collapse-btn:hover { background:#689f38; }
+    .section-body { overflow:hidden; transition:max-height 0.3s ease, opacity 0.3s ease; }
+    .section-body.collapsed { max-height:0 !important; opacity:0; pointer-events:none; }
+    .section-body.expanded { opacity:1; }
+
+    /* ── Stats row ── */
+    .stats-row { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem; }
+    .stat-pill { background:#e8f5e9; color:#2d5016; border-radius:12px; padding:0.25rem 0.7rem; font-size:0.78rem; font-weight:700; border:1px solid #c8e6c9; }
+
+    /* ── Messages ── */
+    .message { padding:0.6rem 0.8rem; border-radius:4px; display:none; font-size:0.85rem; margin-bottom:0.5rem; }
+    .message.show { display:block; }
+    .message.success { background:#d4edda; border-left:3px solid #28a745; color:#155724; }
+    .message.error   { background:#f8d7da; border-left:3px solid #dc3545; color:#721c24; }
+    .message.warning { background:#fff3cd; border-left:3px solid #ffc107; color:#856404; }
+
+    /* ── Category overview grid ── */
+    .cat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:0.6rem; padding:0.75rem 0.5rem 0.5rem; }
+    .cat-card { border:1px solid #c8e6c9; border-radius:6px; padding:0.65rem 0.75rem; background:#fafafa; cursor:pointer; transition:border-color 0.2s, background 0.2s; }
+    .cat-card:hover { border-color:#7cb342; background:#f0f8e8; }
+    .cat-card .code { font-size:1.05rem; font-weight:800; color:#006600; }
+    .cat-card .name { font-size:0.8rem; font-weight:700; color:#333; margin-top:2px; }
+    .cat-card .desc { font-size:0.72rem; color:#666; margin-top:4px; line-height:1.4; }
+    .cat-card .count { margin-top:6px; font-size:0.75rem; font-weight:700; color:#7cb342; }
+
+    /* ── Search bar ── */
+    .search-row { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; padding:0.75rem 0.5rem 0.25rem; }
+    .search-row input[type=text] { flex:1; min-width:220px; padding:0.45rem 0.65rem; border:1px solid #ddd; border-radius:4px; font-size:0.85rem; outline:none; transition:border-color 0.2s; }
+    .search-row input[type=text]:focus { border-color:#7cb342; }
+    .search-row select { padding:0.4rem 0.5rem; border:1px solid #ddd; border-radius:4px; font-size:0.82rem; background:#fff; color:#333; outline:none; cursor:pointer; }
+    .search-row select:focus { border-color:#7cb342; }
+    .result-count { font-size:0.78rem; color:#666; white-space:nowrap; }
+    .result-count strong { color:#006600; }
+
+    /* ── Operator legend ── */
+    .legend { background:#e8f5e9; border:1px solid #c8e6c9; border-radius:4px; padding:0.5rem 0.75rem; margin:0 0.5rem 0.5rem; font-size:0.73rem; color:#444; line-height:1.9; }
+    .legend strong { color:#006600; }
+    .op { display:inline-block; background:#fff; border:1px solid #c8e6c9; border-radius:3px; padding:0 5px; font-family:monospace; font-size:0.75rem; margin:0 1px; }
+
+    /* ── Export button ── */
+    .export-btn { display:inline-block; padding:0.55rem 1.1rem; background:linear-gradient(135deg,#1ad51d,#7cb342); color:#fff; border:none; border-radius:6px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(28,213,29,0.25); transition:all 0.2s; margin:0.5rem 0.5rem 0.75rem; text-transform:uppercase; letter-spacing:0.04em; }
+    .export-btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(28,213,29,0.35); }
+
+    /* ── Results table ── */
+    .tbl-wrap { overflow-x:auto; border:1px solid #e0e0e0; border-radius:6px; margin:0 0.5rem 0; max-height:560px; overflow-y:auto; }
+    table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+    thead th { position:sticky; top:0; z-index:2; background:#006600; color:#fff; padding:8px 12px; text-align:left; font-size:0.75rem; letter-spacing:0.04em; white-space:nowrap; }
+    tbody tr { border-bottom:1px solid #f0f0f0; }
+    tbody tr:nth-child(even) { background:#f9fdf9; }
+    tbody tr:hover { background:#e8f5e9; }
+    tbody td { padding:6px 12px; vertical-align:middle; }
+    .tag-cell { font-family:"Courier New",monospace; font-weight:700; color:#006600; white-space:nowrap; }
+    .cat-badge { display:inline-block; background:#006600; color:#fff; border-radius:3px; padding:2px 6px; font-size:0.7rem; font-weight:700; letter-spacing:0.05em; }
+    .sub-cell { font-family:"Courier New",monospace; font-size:0.76rem; color:#555; }
+    .desc-cell { color:#222; }
+    .no-results { text-align:center; padding:2rem; color:#999; font-size:0.88rem; }
+    .price-cell { font-family:"Courier New",monospace; font-weight:700; color:#2d5016; text-align:right; white-space:nowrap; }
+
+    mark { background:#ffe082; color:#000; border-radius:2px; padding:0 1px; }
+
+    @media(max-width:700px) { .cat-grid { grid-template-columns:1fr 1fr; } }
+    @media(max-width:480px) { .cat-grid { grid-template-columns:1fr; } }
+  
+  /* ── SHARED MODOROLL STYLE ── */
+  :root {
+    --green:      #2e7d32;
+    --green-dark: #1b5e20;
+    --green-lt:   #c8e6c9;
+    --accent:     #4caf50;
+  }
+  body {
+    background: #111 url("img/formicbg.png") center/cover fixed !important;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,40,0,0.72);
+    z-index: 0;
+    pointer-events: none;
+  }
+  /* ── HIDE OLD HEADER ── */
+  .header-wrap, header, .logo-bar, .nav-bar { display: none !important; }
+  /* ── NEW NAV ── */
+  nav.modoroll-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,30,10,0.96);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 8px 24px;
+  }
+  nav.modoroll-nav a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 2px;
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+  }
+  nav.modoroll-nav a:hover { color: #fff; }
+  nav.modoroll-nav a.active { color: var(--accent); border-color: var(--accent); }
+  /* ── LOGO BAR ── */
+  .modoroll-logo-bar {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 0 4px;
+  }
+  .modoroll-logo-bar img { height: 52px; }
+  /* ── HERO TIGHTEN ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 0 !important;
+  }
+  .hero-inner { padding: 16px !important; }
+  .hero::before, .hero::after { display: none !important; }
+  .hero h1 { text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+  /* ── CONTENT LAYERS ── */
+  .wrap, .page-wrap, main { position: relative; z-index: 1; }
+  .panel { position: relative; z-index: 1; }
+  main { padding-top: 0 !important; }
+
+</style>
+</head>
+<body>
+<nav class="modoroll-nav">
+  <a href="BOM_Generator_Unified.html">Models</a>
+  <a href="Kit_Tools.html" class="active">Kits</a>
+  <a href="PartNumber_Tools.html">Parts</a>
+  <a href="Resources.html">Docs/Worksheets</a>
+  <a href="Calcs.html">Checks/Calcs</a>
+</nav>
+<div class="modoroll-logo-bar">
+  <a href="index.html"><img src="img/MRHeader.png" alt="MODOROLL"></a>
+</div>
+
+  <!-- Fixed Header -->
+  <header class="header-wrap">
+    <div class="logo-bar">
+      <a href="index.html"><img src="img/MRHeader.png" alt="MODOROLL logo"/></a>
+    </div>
+    <nav class="nav-bar" aria-label="Main">
+      <a href="BOM_Generator_Unified.html">Models</a>
+      <a style="color:green" href="Kit_Tools.html" aria-current="page">Kits</a>
+      <a href="https://www.MODO-MARKET.com/PartsCatalog_v100.html">Parts Catalog</a>
+      <a href="Resources.html">Docs/Worksheets</a>
+      <a href="Calcs.html">Checks/Calcs</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>Kit Tools v1</h1>
+        <p>Parts catalog tag reference — search by tag number, description, or category</p>
+      </div>
+    </section>
+
+    <div class="page-layout">
+
+      <div id="message" class="message"></div>
+
+      <!-- ── CATEGORY OVERVIEW ── -->
+      <div class="panel">
+        <div class="section-header" onclick="toggleSection('cat-body', this)">
+          <span class="section-title">📋 Category Overview</span>
+          <button class="collapse-btn">−</button>
+        </div>
+        <div class="section-body expanded" id="cat-body" style="max-height:600px;">
+          <div class="cat-grid" id="catGrid"></div>
+        </div>
+      </div>
+
+      <!-- ── SEARCH ── -->
+      <div class="panel">
+        <div class="section-header" onclick="toggleSection('search-body', this)">
+          <span class="section-title">🔍 Search Parts Catalog
+            <span class="section-count" id="searchCountLabel"></span>
+          </span>
+          <button class="collapse-btn">−</button>
+        </div>
+        <div class="section-body expanded" id="search-body" style="max-height:900px;">
+
+          <div class="legend">
+            <strong>Search operators:</strong>
+            <span class="op">term</span> contains &nbsp;|&nbsp;
+            <span class="op">"phrase"</span> exact &nbsp;|&nbsp;
+            <span class="op">*</span> wildcard &nbsp;|&nbsp;
+            <span class="op">AND</span> both &nbsp;|&nbsp;
+            <span class="op">OR</span> either &nbsp;|&nbsp;
+            <span class="op">//term</span> exclude &nbsp;|&nbsp;
+            <span class="op">tag:</span> tag# only &nbsp;|&nbsp;
+            <span class="op">desc:</span> description only &nbsp;|&nbsp;
+            <span class="op">cat:</span> category only
+          </div>
+
+          <div class="search-row">
+            <input type="text" id="searchInput" placeholder="Search tag, description, category…" oninput="doSearch()" autocomplete="off" spellcheck="false"/>
+            <select id="catFilter" onchange="doSearch()">
+              <option value="">All Categories</option>
+              <option value="CK">CK — Control Kit</option>
+              <option value="CP">CP — Control Panel</option>
+              <option value="GB">GB — Green Box</option>
+              <option value="HK">HK — Hardware Kit</option>
+              <option value="PS">PS — Power Supply</option>
+            </select>
+            <span class="result-count" id="resultCount"></span>
+          </div>
+
+          <div class="tbl-wrap">
+            <table id="resultsTable">
+              <thead>
+                <tr>
+                  <th>TAG #</th>
+                  <th>CAT</th>
+                  <th>SUB-CAT</th>
+                  <th>SEQ</th>
+                  <th>DESCRIPTION</th>
+                  <th>LIST PRICE</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody"></tbody>
+            </table>
+          </div>
+
+          <button class="export-btn" onclick="exportXlsx()">📥 Export Results (XLSX)</button>
+
+        </div>
+      </div>
+
+    </div><!-- /page-layout -->
+  </main>
+
+<!-- SheetJS -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// CATALOG DATA
+// ═══════════════════════════════════════════════════════════════════════════
+const CATALOG = [
+  {tag:"CK-0001-0104", cat:"CK", sub:"0001", seq:"0104", desc:"ASI LINE FULL EYE", price:null},
+  {tag:"CK-0003-0001", cat:"CK", sub:"0003", seq:"0001", desc:"START EYE - MODOLINK - IN FRAME", price:null},
+  {tag:"CK-0004-0101", cat:"CK", sub:"0004", seq:"0101", desc:"NUMINA START EYE KIT STANDARD", price:null},
+  {tag:"CK-0004-0104", cat:"CK", sub:"0004", seq:"0104", desc:"NUMINA ABOVE FRAME PE", price:null},
+  {tag:"CK-0004-0501", cat:"CK", sub:"0004", seq:"0501", desc:"NUMINA RESET BUTTON", price:null},
+  {tag:"CK-0004-0502", cat:"CK", sub:"0004", seq:"0502", desc:"NUMINA MOMENTARY FOOT PEDAL", price:null},
+  {tag:"CK-0100-0005", cat:"CK", sub:"0100", seq:"0005", desc:"ABOVE FRAME PHOTO EYE", price:250},
+  {tag:"CK-0100-0007", cat:"CK", sub:"0100", seq:"0007", desc:"BLACK CABLE", price:600},
+  {tag:"CK-0100-0013", cat:"CK", sub:"0100", seq:"0013", desc:"G10 BLOCK", price:100},
+  {tag:"CK-0100-0014", cat:"CK", sub:"0100", seq:"0014", desc:"G10 CLAMP", price:100},
+  {tag:"CK-0200-0001", cat:"CK", sub:"0200", seq:"0001", desc:"ZPA START EYE", price:350},
+  {tag:"CK-0200-0002", cat:"CK", sub:"0200", seq:"0002", desc:"ZPA LINE FULL EYE", price:450},
+  {tag:"CK-0200-0003", cat:"CK", sub:"0200", seq:"0003", desc:"ZPA X1 CROSSOVER - LH TO RH", price:50},
+  {tag:"CK-0200-0004", cat:"CK", sub:"0200", seq:"0004", desc:"ZPA X2 CROSSOVER - RH TO LH", price:50},
+  {tag:"CK-0200-0005", cat:"CK", sub:"0200", seq:"0005", desc:"MOMENTARY FOOT PEDAL", price:null},
+  {tag:"CK-0200-0006", cat:"CK", sub:"0200", seq:"0006", desc:"GREENBOX PUSH BUTTON", price:null},
+  {tag:"CK-0600-0001", cat:"CK", sub:"0600", seq:"0001", desc:"FULL CONTROL START EYE KIT", price:500},
+  {tag:"CK-0600-0002", cat:"CK", sub:"0600", seq:"0002", desc:"AFPE ASI", price:500},
+  {tag:"CK-0600-0003", cat:"CK", sub:"0600", seq:"0003", desc:"START EYE ASI", price:550},
+  {tag:"CK-0600-0004", cat:"CK", sub:"0600", seq:"0004", desc:"LINE FULL EYE ASI", price:null},
+  {tag:"CK-0600-0005", cat:"CK", sub:"0600", seq:"0005", desc:"GREEN BOX ASI PUSH BUTTON", price:750},
+  {tag:"CK-0600-0006", cat:"CK", sub:"0600", seq:"0006", desc:"MOMENTARY FOOT PEDAL ASI", price:1500},
+  {tag:"CK-0600-0007", cat:"CK", sub:"0600", seq:"0007", desc:"YELLOW CABLE", price:400},
+  {tag:"CK-0600-0008", cat:"CK", sub:"0600", seq:"0008", desc:"P&F NODE PROGRAMMER", price:null},
+  {tag:"CP-0600-1001", cat:"CP", sub:"0600", seq:"1001", desc:"FULL CONTROL PANEL 60A", price:59000},
+  {tag:"GB-0004-0500", cat:"GB", sub:"0004", seq:"0500", desc:"NUMINA GREEN BOX STANDARD", price:null},
+  {tag:"GB-0200-0001", cat:"GB", sub:"0200", seq:"0001", desc:"ZPA GREEN BOX", price:450},
+  {tag:"GB-0200-0002", cat:"GB", sub:"0200", seq:"0002", desc:"ZPA END OF LINE / HAND-OFF", price:1200},
+  {tag:"GB-0600-0006", cat:"GB", sub:"0600", seq:"0006", desc:"GREEN BOX END OF LINE / HAND-OFF", price:750},
+  {tag:"HK-0500-0000", cat:"HK", sub:"0500", seq:"0000", desc:"RSH/L ADAPTER", price:50},
+  {tag:"HK-0500-0002", cat:"HK", sub:"0500", seq:"0002", desc:"INCLINE/DECLINE PIVOT", price:150},
+  {tag:"HK-0500-0004", cat:"HK", sub:"0500", seq:"0004", desc:"KNEE BRACE KIT", price:200},
+  {tag:"HK-0001-0040", cat:"HK", sub:"0001", seq:"0040", desc:"GATE CROSS-OVER AS-i", price:2500},
+  {tag:"HK-0002-0040", cat:"HK", sub:"0002", seq:"0040", desc:"GATE CROSS-OVER ZPA", price:2500},
+  {tag:"HK-0003-0040", cat:"HK", sub:"0003", seq:"0040", desc:"GATE CROSS-OVER MODOLINK", price:2500},
+  {tag:"HK-0006-0040", cat:"HK", sub:"0006", seq:"0040", desc:"GATE CROSS-OVER PULSE", price:2500},
+  {tag:"HK-0007-0040", cat:"HK", sub:"0007", seq:"0040", desc:"GATE CROSS-OVER ITOH", price:2500},
+  {tag:"HK-0500-0015", cat:"HK", sub:"0500", seq:"0015", desc:"END STOP KIT - 15BF", price:100},
+  {tag:"HK-0500-0016", cat:"HK", sub:"0500", seq:"0016", desc:"END STOP KIT - 18BF", price:100},
+  {tag:"HK-0500-0017", cat:"HK", sub:"0500", seq:"0017", desc:"END STOP KIT - 21BF", price:100},
+  {tag:"HK-0500-0018", cat:"HK", sub:"0500", seq:"0018", desc:"END STOP KIT - 24BF", price:100},
+  {tag:"HK-0500-0019", cat:"HK", sub:"0500", seq:"0019", desc:"END STOP KIT - 27BF", price:100},
+  {tag:"HK-0500-0020", cat:"HK", sub:"0500", seq:"0020", desc:"END STOP KIT - 30BF", price:100},
+  {tag:"HK-0500-0021", cat:"HK", sub:"0500", seq:"0021", desc:"END STOP KIT - 33BF", price:100},
+  {tag:"HK-0500-0022", cat:"HK", sub:"0500", seq:"0022", desc:"END STOP KIT - 36BF", price:100},
+  {tag:"HK-0500-0023", cat:"HK", sub:"0500", seq:"0023", desc:"END PLATE KIT - 15BF", price:100},
+  {tag:"HK-0500-0024", cat:"HK", sub:"0500", seq:"0024", desc:"END PLATE KIT - 18BF", price:100},
+  {tag:"HK-0500-0025", cat:"HK", sub:"0500", seq:"0025", desc:"END PLATE KIT - 21BF", price:100},
+  {tag:"HK-0500-0026", cat:"HK", sub:"0500", seq:"0026", desc:"END PLATE KIT - 24BF", price:100},
+  {tag:"HK-0500-0027", cat:"HK", sub:"0500", seq:"0027", desc:"END PLATE KIT - 27BF", price:100},
+  {tag:"HK-0500-0028", cat:"HK", sub:"0500", seq:"0028", desc:"END PLATE KIT - 30BF", price:100},
+  {tag:"HK-0500-0029", cat:"HK", sub:"0500", seq:"0029", desc:"END PLATE KIT - 33BF", price:100},
+  {tag:"HK-0500-0030", cat:"HK", sub:"0500", seq:"0030", desc:"END PLATE KIT - 36BF", price:100},
+  {tag:"HK-0500-0031", cat:"HK", sub:"0500", seq:"0031", desc:"HANGING SUPPORT KIT - 15BF", price:null},
+  {tag:"HK-0500-0032", cat:"HK", sub:"0500", seq:"0032", desc:"HANGING SUPPORT KIT - 18BF", price:null},
+  {tag:"HK-0500-0033", cat:"HK", sub:"0500", seq:"0033", desc:"HANGING SUPPORT KIT - 21BF", price:null},
+  {tag:"HK-0500-0034", cat:"HK", sub:"0500", seq:"0034", desc:"HANGING SUPPORT KIT - 24BF", price:null},
+  {tag:"HK-0500-0035", cat:"HK", sub:"0500", seq:"0035", desc:"HANGING SUPPORT KIT - 27BF", price:null},
+  {tag:"HK-0500-0036", cat:"HK", sub:"0500", seq:"0036", desc:"HANGING SUPPORT KIT - 30BF", price:null},
+  {tag:"HK-0500-0037", cat:"HK", sub:"0500", seq:"0037", desc:"HANGING SUPPORT KIT - 33BF", price:null},
+  {tag:"HK-0500-0038", cat:"HK", sub:"0500", seq:"0038", desc:"HANGING SUPPORT KIT - 36BF", price:null},
+  {tag:"HK-0500-0039", cat:"HK", sub:"0500", seq:"0039", desc:"WEDGE BRACKET METAL", price:null},
+  {tag:"HK-0500-0100", cat:"HK", sub:"0500", seq:"0100", desc:"SPLICE PLATE", price:50},
+  {tag:"HK-0500-0040", cat:"HK", sub:"0500", seq:"0040", desc:"VALUE GUIDE 10FT, BOTH SIDES, 1 LEVEL", price:425},
+  {tag:"HK-0500-0041", cat:"HK", sub:"0500", seq:"0041", desc:"VALUE GUIDE 10FT, BOTH SIDES, 2 LEVELS", price:800},
+  {tag:"PS-0500-1000", cat:"PS", sub:"0500", seq:"1000", desc:"PSE 10 SINGLE PHASE", price:1200},
+  {tag:"PS-0500-1001", cat:"PS", sub:"0500", seq:"1001", desc:"PSE 20 SINGLE PHASE", price:1500},
+  {tag:"PS-0500-1002", cat:"PS", sub:"0500", seq:"1002", desc:"PSE 40 SINGLE PHASE", price:1750},
+  {tag:"PS-0500-1003", cat:"PS", sub:"0500", seq:"1003", desc:"PSE 40 3 PHASE", price:3200},
+  {tag:"PS-0500-1004", cat:"PS", sub:"0500", seq:"1004", desc:"PSE 80 3 PHASE", price:2200},
+  {tag:"HK-0500-0042", cat:"HK", sub:"0500", seq:"0042", desc:"FLIPRAIL BELLY PAN 15BF x 12L", price:100},
+  {tag:"HK-0500-0043", cat:"HK", sub:"0500", seq:"0043", desc:"FLIPRAIL BELLY PAN 15BF x 18L", price:150},
+  {tag:"HK-0500-0044", cat:"HK", sub:"0500", seq:"0044", desc:"FLIPRAIL BELLY PAN 15BF x 24L", price:200},
+  {tag:"HK-0500-0045", cat:"HK", sub:"0500", seq:"0045", desc:"FLIPRAIL BELLY PAN 15BF x 30L", price:200},
+  {tag:"HK-0500-0046", cat:"HK", sub:"0500", seq:"0046", desc:"FLIPRAIL BELLY PAN 15BF x 36L", price:250},
+  {tag:"HK-0500-0047", cat:"HK", sub:"0500", seq:"0047", desc:"FLIPRAIL BELLY PAN 15BF x 60L", price:400},
+  {tag:"HK-0500-0048", cat:"HK", sub:"0500", seq:"0048", desc:"FLIPRAIL BELLY PAN 15BF x 72L", price:500},
+  {tag:"HK-0500-0049", cat:"HK", sub:"0500", seq:"0049", desc:"FLIPRAIL BELLY PAN 18BF x 12L", price:100},
+  {tag:"HK-0500-0050", cat:"HK", sub:"0500", seq:"0050", desc:"FLIPRAIL BELLY PAN 18BF x 18L", price:150},
+  {tag:"HK-0500-0051", cat:"HK", sub:"0500", seq:"0051", desc:"FLIPRAIL BELLY PAN 18BF x 24L", price:200},
+  {tag:"HK-0500-0052", cat:"HK", sub:"0500", seq:"0052", desc:"FLIPRAIL BELLY PAN 18BF x 30L", price:250},
+  {tag:"HK-0500-0053", cat:"HK", sub:"0500", seq:"0053", desc:"FLIPRAIL BELLY PAN 18BF x 36L", price:300},
+  {tag:"HK-0500-0054", cat:"HK", sub:"0500", seq:"0054", desc:"FLIPRAIL BELLY PAN 18BF x 60L", price:450},
+  {tag:"HK-0500-0055", cat:"HK", sub:"0500", seq:"0055", desc:"FLIPRAIL BELLY PAN 18BF x 72L", price:550},
+  {tag:"HK-0500-0056", cat:"HK", sub:"0500", seq:"0056", desc:"FLIPRAIL BELLY PAN 21BF x 12L", price:100},
+  {tag:"HK-0500-0057", cat:"HK", sub:"0500", seq:"0057", desc:"FLIPRAIL BELLY PAN 21BF x 18L", price:150},
+  {tag:"HK-0500-0058", cat:"HK", sub:"0500", seq:"0058", desc:"FLIPRAIL BELLY PAN 21BF x 24L", price:200},
+  {tag:"HK-0500-0059", cat:"HK", sub:"0500", seq:"0059", desc:"FLIPRAIL BELLY PAN 21BF x 30L", price:250},
+  {tag:"HK-0500-0060", cat:"HK", sub:"0500", seq:"0060", desc:"FLIPRAIL BELLY PAN 21BF x 36L", price:300},
+  {tag:"HK-0500-0061", cat:"HK", sub:"0500", seq:"0061", desc:"FLIPRAIL BELLY PAN 21BF x 60L", price:500},
+  {tag:"HK-0500-0062", cat:"HK", sub:"0500", seq:"0062", desc:"FLIPRAIL BELLY PAN 21BF x 72L", price:600},
+  {tag:"HK-0500-0063", cat:"HK", sub:"0500", seq:"0063", desc:"FLIPRAIL BELLY PAN 24BF x 12L", price:100},
+  {tag:"HK-0500-0064", cat:"HK", sub:"0500", seq:"0064", desc:"FLIPRAIL BELLY PAN 24BF x 18L", price:150},
+  {tag:"HK-0500-0065", cat:"HK", sub:"0500", seq:"0065", desc:"FLIPRAIL BELLY PAN 24BF x 24L", price:200},
+  {tag:"HK-0500-0066", cat:"HK", sub:"0500", seq:"0066", desc:"FLIPRAIL BELLY PAN 24BF x 30L", price:250},
+  {tag:"HK-0500-0067", cat:"HK", sub:"0500", seq:"0067", desc:"FLIPRAIL BELLY PAN 24BF x 36L", price:300},
+  {tag:"HK-0500-0068", cat:"HK", sub:"0500", seq:"0068", desc:"FLIPRAIL BELLY PAN 24BF x 60L", price:500},
+  {tag:"HK-0500-0069", cat:"HK", sub:"0500", seq:"0069", desc:"FLIPRAIL BELLY PAN 24BF x 72L", price:600},
+  {tag:"HK-0500-0070", cat:"HK", sub:"0500", seq:"0070", desc:"FLIPRAIL BELLY PAN 27BF x 12L", price:150},
+  {tag:"HK-0500-0071", cat:"HK", sub:"0500", seq:"0071", desc:"FLIPRAIL BELLY PAN 27BF x 18L", price:200},
+  {tag:"HK-0500-0072", cat:"HK", sub:"0500", seq:"0072", desc:"FLIPRAIL BELLY PAN 27BF x 24L", price:250},
+  {tag:"HK-0500-0073", cat:"HK", sub:"0500", seq:"0073", desc:"FLIPRAIL BELLY PAN 27BF x 30L", price:300},
+  {tag:"HK-0500-0074", cat:"HK", sub:"0500", seq:"0074", desc:"FLIPRAIL BELLY PAN 27BF x 36L", price:350},
+  {tag:"HK-0500-0075", cat:"HK", sub:"0500", seq:"0075", desc:"FLIPRAIL BELLY PAN 27BF x 60L", price:550},
+  {tag:"HK-0500-0076", cat:"HK", sub:"0500", seq:"0076", desc:"FLIPRAIL BELLY PAN 27BF x 72L", price:650},
+  {tag:"HK-0500-0077", cat:"HK", sub:"0500", seq:"0077", desc:"FLIPRAIL BELLY PAN 30BF x 12L", price:150},
+  {tag:"HK-0500-0078", cat:"HK", sub:"0500", seq:"0078", desc:"FLIPRAIL BELLY PAN 30BF x 18L", price:200},
+  {tag:"HK-0500-0079", cat:"HK", sub:"0500", seq:"0079", desc:"FLIPRAIL BELLY PAN 30BF x 24L", price:250},
+  {tag:"HK-0500-0080", cat:"HK", sub:"0500", seq:"0080", desc:"FLIPRAIL BELLY PAN 30BF x 30L", price:300},
+  {tag:"HK-0500-0081", cat:"HK", sub:"0500", seq:"0081", desc:"FLIPRAIL BELLY PAN 30BF x 36L", price:350},
+  {tag:"HK-0500-0082", cat:"HK", sub:"0500", seq:"0082", desc:"FLIPRAIL BELLY PAN 30BF x 60L", price:600},
+  {tag:"HK-0500-0083", cat:"HK", sub:"0500", seq:"0083", desc:"FLIPRAIL BELLY PAN 30BF x 72L", price:700},
+  {tag:"HK-0500-0084", cat:"HK", sub:"0500", seq:"0084", desc:"FLIPRAIL BELLY PAN 33BF x 12L", price:150},
+  {tag:"HK-0500-0085", cat:"HK", sub:"0500", seq:"0085", desc:"FLIPRAIL BELLY PAN 33BF x 18L", price:200},
+  {tag:"HK-0500-0086", cat:"HK", sub:"0500", seq:"0086", desc:"FLIPRAIL BELLY PAN 33BF x 24L", price:250},
+  {tag:"HK-0500-0087", cat:"HK", sub:"0500", seq:"0087", desc:"FLIPRAIL BELLY PAN 33BF x 30L", price:300},
+  {tag:"HK-0500-0088", cat:"HK", sub:"0500", seq:"0088", desc:"FLIPRAIL BELLY PAN 33BF x 36L", price:400},
+  {tag:"HK-0500-0089", cat:"HK", sub:"0500", seq:"0089", desc:"FLIPRAIL BELLY PAN 33BF x 60L", price:600},
+  {tag:"HK-0500-0090", cat:"HK", sub:"0500", seq:"0090", desc:"FLIPRAIL BELLY PAN 33BF x 72L", price:750},
+  {tag:"HK-0500-0091", cat:"HK", sub:"0500", seq:"0091", desc:"FLIPRAIL BELLY PAN 36BF x 12L", price:150},
+  {tag:"HK-0500-0092", cat:"HK", sub:"0500", seq:"0092", desc:"FLIPRAIL BELLY PAN 36BF x 18L", price:200},
+  {tag:"HK-0500-0093", cat:"HK", sub:"0500", seq:"0093", desc:"FLIPRAIL BELLY PAN 36BF x 24L", price:300},
+  {tag:"HK-0500-0094", cat:"HK", sub:"0500", seq:"0094", desc:"FLIPRAIL BELLY PAN 36BF x 30L", price:350},
+  {tag:"HK-0500-0095", cat:"HK", sub:"0500", seq:"0095", desc:"FLIPRAIL BELLY PAN 36BF x 36L", price:400},
+  {tag:"HK-0500-0096", cat:"HK", sub:"0500", seq:"0096", desc:"FLIPRAIL BELLY PAN 36BF x 60L", price:650},
+  {tag:"HK-0500-0097", cat:"HK", sub:"0500", seq:"0097", desc:"FLIPRAIL BELLY PAN 36BF x 72L", price:800},
+  {tag:"HK-0500-0098", cat:"HK", sub:"0500", seq:"0098", desc:"RSH-H 90 BED CONNECTION", price:150},
+  {tag:"HK-0500-0099", cat:"HK", sub:"0500", seq:"0099", desc:"NOSE PLOW VERSION 1", price:150},
+];
+
+const CATEGORIES = {
+  CK: {name:"Control Kit",   desc:"Sensors, photo eyes, cables, crossovers, and control accessories"},
+  CP: {name:"Control Panel", desc:"Pre-wired control panel assemblies"},
+  GB: {name:"Green Box",     desc:"Junction/handoff boxes and end-of-line assemblies"},
+  HK: {name:"Hardware Kit",  desc:"Mechanical hardware: end stops, plates, supports, adapters, brackets"},
+  PS: {name:"Power Supply",  desc:"Power supply enclosures (PSE) — single and 3-phase"},
+};
+
+// ── Category overview ─────────────────────────────────────────────────────
+(function buildCatGrid(){
+  const grid = document.getElementById("catGrid");
+  const counts = {};
+  CATALOG.forEach(r => counts[r.cat] = (counts[r.cat]||0)+1);
+  Object.entries(CATEGORIES).forEach(([code, info]) => {
+    const card = document.createElement("div");
+    card.className = "cat-card";
+    card.innerHTML = `
+      <div class="code">${code}</div>
+      <div class="name">${info.name}</div>
+      <div class="desc">${info.desc}</div>
+      <div class="count">${counts[code]||0} items</div>
+    `;
+    card.addEventListener("click", () => {
+      document.getElementById("catFilter").value = code;
+      document.getElementById("searchInput").value = "";
+      doSearch();
+      document.getElementById("search-body").scrollIntoView({behavior:"smooth", block:"start"});
+    });
+    grid.appendChild(card);
+  });
+})();
+
+// ── Search engine ─────────────────────────────────────────────────────────
+function wildcardToRegex(pattern) {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(escaped.replace(/\*/g, ".*"), "i");
+}
+
+function parseQuery(raw) {
+  const q = raw.trim();
+  if (!q) return null;
+  let scope = "all", term = q;
+  if (/^tag:/i.test(q))  { scope = "tag";  term = q.slice(4).trim(); }
+  if (/^desc:/i.test(q)) { scope = "desc"; term = q.slice(5).trim(); }
+  if (/^cat:/i.test(q))  { scope = "cat";  term = q.slice(4).trim(); }
+  const excludes = [];
+  term = term.replace(/\/\/(\S+)/g, (_, w) => { excludes.push(w); return ""; }).trim();
+  if (/\bAND\b/i.test(term)) {
+    const parts = term.split(/\bAND\b/i).map(s => s.trim()).filter(Boolean);
+    return { type:"AND", parts, excludes, scope };
+  }
+  if (/\bOR\b/i.test(term)) {
+    const parts = term.split(/\bOR\b/i).map(s => s.trim()).filter(Boolean);
+    return { type:"OR", parts, excludes, scope };
+  }
+  return { type:"SINGLE", parts:[term], excludes, scope };
+}
+
+function matchRecord(rec, query) {
+  if (!query) return true;
+  function getFields(scope) {
+    if (scope === "tag")  return [rec.tag];
+    if (scope === "desc") return [rec.desc];
+    if (scope === "cat")  return [rec.cat, CATEGORIES[rec.cat]?.name||""];
+    return [rec.tag, rec.cat, rec.sub, rec.seq, rec.desc];
+  }
+  function testTerm(t, scope) {
+    const fields = getFields(scope);
+    if (/^".*"$/.test(t)) {
+      const phrase = t.slice(1,-1);
+      return fields.some(f => f.toLowerCase().includes(phrase.toLowerCase()));
+    }
+    const re = wildcardToRegex(t);
+    return fields.some(f => re.test(f));
+  }
+  const { type, parts, excludes, scope } = query;
+  for (const ex of excludes) { if (testTerm(ex, scope)) return false; }
+  if (type === "AND") return parts.every(p => testTerm(p, scope));
+  if (type === "OR")  return parts.some(p  => testTerm(p, scope));
+  return testTerm(parts[0], scope);
+}
+
+function highlight(text, query) {
+  if (!query || query.type !== "SINGLE") return esc(text);
+  const t = query.parts[0];
+  if (!t) return esc(text);
+  let pattern = /^".*"$/.test(t) ? t.slice(1,-1) : t;
+  try {
+    const re = new RegExp(`(${pattern.replace(/[.+^${}()|[\]\\]/g,"\\$&").replace(/\*/g,".*")})`, "gi");
+    return esc(text).replace(re, "<mark>$1</mark>");
+  } catch { return esc(text); }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+let lastResults = [];
+
+function doSearch() {
+  const raw  = document.getElementById("searchInput").value;
+  const catF = document.getElementById("catFilter").value;
+  const query = parseQuery(raw);
+  lastResults = CATALOG.filter(r => {
+    if (catF && r.cat !== catF) return false;
+    return matchRecord(r, query);
+  });
+  renderResults(lastResults, query);
+}
+
+function renderResults(rows, query) {
+  const tbody = document.getElementById("resultsBody");
+  tbody.innerHTML = "";
+  const countEl = document.getElementById("resultCount");
+  const labelEl = document.getElementById("searchCountLabel");
+  countEl.innerHTML = `<strong>${rows.length}</strong> of ${CATALOG.length} items`;
+  labelEl.textContent = `(${rows.length} results)`;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="no-results">No matching items found.</td></tr>`;
+    return;
+  }
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="tag-cell">${highlight(r.tag, query)}</td>
+      <td><span class="cat-badge">${esc(r.cat)}</span></td>
+      <td class="sub-cell">${esc(r.sub)}</td>
+      <td class="sub-cell">${esc(r.seq)}</td>
+      <td class="desc-cell">${highlight(r.desc, query)}</td>
+      <td class="price-cell">${r.price ? '$' + r.price.toLocaleString() : ''}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+function exportXlsx() {
+  const rows = lastResults.length > 0 ? lastResults : CATALOG;
+  const wsData = [["TAG #","CATEGORY","SUB-CATEGORY","SEQ #","DESCRIPTION","LIST PRICE"]];
+  rows.forEach(r => wsData.push([r.tag, r.cat, r.sub, r.seq, r.desc, r.price || ""]));
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws["!cols"] = [{wch:20},{wch:12},{wch:14},{wch:8},{wch:55},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Parts Catalog");
+  const d = new Date();
+  const ds = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+  XLSX.writeFile(wb, `PartsCatalog_${ds}_${rows.length}items.xlsx`);
+  showMessage(`Exported ${rows.length} items.`, "success");
+}
+
+// ── Panel collapse ────────────────────────────────────────────────────────
+function toggleSection(bodyId, header) {
+  const body = document.getElementById(bodyId);
+  const btn  = header.querySelector(".collapse-btn");
+  const isExp = body.classList.contains("expanded");
+  if (isExp) {
+    body.style.maxHeight = body.scrollHeight + "px";
+    requestAnimationFrame(() => {
+      body.style.maxHeight = "0";
+      body.classList.remove("expanded");
+      body.classList.add("collapsed");
+      btn.textContent = "+";
+    });
+  } else {
+    body.classList.remove("collapsed");
+    body.classList.add("expanded");
+    body.style.maxHeight = body.scrollHeight + "px";
+    btn.textContent = "−";
+    setTimeout(() => { body.style.maxHeight = "none"; }, 320);
+  }
+}
+
+// ── Message toast ─────────────────────────────────────────────────────────
+function showMessage(text, type="success") {
+  const el = document.getElementById("message");
+  el.textContent = text;
+  el.className = `message show ${type}`;
+  setTimeout(() => { el.className = "message"; }, 4000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+doSearch();
+</script>
+</body>
+</html>

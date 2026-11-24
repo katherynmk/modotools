@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skew Calculator - Modoroll MODO-MARKET</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+    /* ── Header ── */
+    .header-wrap {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 9999;
+      display: grid;
+      grid-template-rows: auto 44px;
+      background: transparent;
+    }
+    .logo-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #fff;
+      padding: 10px 16px;
+      border-bottom: 1px solid #eee;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,.04));
+    }
+    .logo-bar img { height: 72px; width: auto; max-width: min(100%, 920px); }
+    .nav-bar {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .nav-bar a {
+      display: inline-block;
+      padding: 10px 6px;
+      font-weight: 600;
+      text-decoration: none;
+      color: inherit;
+    }
+    .nav-bar a:hover { border-bottom: 2px solid #1ad51d; }
+
+    /* ── Main ── */
+    main { padding-top: 132px; }
+
+    .hero {
+      position: relative;
+      min-height: 15vh;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: #fff;
+      overflow: clip;
+    }
+    .hero::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: url("img/formicbg.png");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: -2;
+      transform: translateZ(0);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,.3));
+      z-index: -1;
+    }
+    .hero-inner { width: min(92vw, 1200px); padding: 48px 16px; }
+    .hero h1 {
+      font-size: 2rem;
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .hero p { font-size: 1rem; opacity: 0.9; }
+
+    /* ── Container ── */
+    .container {
+      max-width: 960px;
+      margin: 1.5rem auto;
+      padding: 0 2rem;
+    }
+
+    /* ── Panel ── */
+    .panel {
+      background: white;
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 1.2rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-left: 4px solid #1ad51d;
+    }
+    .panel h2 {
+      color: #006600;
+      margin-bottom: 0.9rem;
+      font-size: 1.25rem;
+      font-weight: 800;
+    }
+    .panel h3 {
+      color: #006600;
+      margin: 0.8rem 0 0.4rem;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    /* ── Input grid ── */
+    .input-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .input-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #444;
+    }
+    .input-group select {
+      width: 100%;
+      padding: 0.5rem 0.7rem;
+      border: 1.5px solid #c8e6c9;
+      border-radius: 7px;
+      font-size: 0.95rem;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #fff;
+      color: #333;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .input-group select:focus {
+      outline: none;
+      border-color: #7cb342;
+      box-shadow: 0 0 0 3px rgba(124,179,66,0.15);
+    }
+
+    .input-group input[type="number"] {
+      padding: 0.5rem 0.65rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    .input-group input[type="number"]:focus {
+      outline: none;
+      border-color: #7cb342;
+      box-shadow: 0 0 0 2px rgba(124,179,66,0.2);
+    }
+    .input-group input.conditional {
+      border-color: #aaa;
+      background: #fafafa;
+    }
+    .input-group input.conditional:focus {
+      border-color: #7cb342;
+      background: #fff;
+    }
+    .input-hint {
+      font-size: 0.75rem;
+      color: #888;
+      font-style: italic;
+    }
+
+    /* ── Checkboxes ── */
+    .checkbox-row {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      margin-top: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #333;
+    }
+    .checkbox-item input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      cursor: pointer;
+      accent-color: #7cb342;
+    }
+
+    /* ── Divider ── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid #e8e8e8;
+      margin: 1rem 0;
+    }
+
+    /* ── Results ── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+    .result-card {
+      background: linear-gradient(135deg, #7cb342 0%, #558b2f 100%);
+      color: white;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      text-align: center;
+    }
+    .result-card.secondary {
+      background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+    }
+    .result-card.info {
+      background: linear-gradient(135deg, #039be5 0%, #0277bd 100%);
+    }
+    .result-card.warning {
+      background: linear-gradient(135deg, #fb8c00 0%, #e65100 100%);
+    }
+    .result-value {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 0.3rem;
+    }
+    .result-label {
+      font-size: 0.8rem;
+      opacity: 0.9;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .result-sub {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      margin-top: 0.2rem;
+    }
+
+    /* ── Empty / placeholder state ── */
+    .results-placeholder {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: #aaa;
+      font-size: 0.95rem;
+      font-style: italic;
+    }
+
+    /* ── Hardware reference table ── */
+    .hw-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+    }
+    .hw-table th {
+      background: #f0f8e8;
+      color: #2d5016;
+      font-weight: 700;
+      padding: 0.45rem 0.7rem;
+      text-align: left;
+      border-bottom: 2px solid #7cb342;
+    }
+    .hw-table td {
+      padding: 0.4rem 0.7rem;
+      border-bottom: 1px solid #eee;
+    }
+    .hw-table tr:last-child td { border-bottom: none; }
+    .hw-table tr:hover td { background: #f9fdf4; }
+
+    /* ── Fan zone detail table ── */
+    .fan-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      margin-top: 0.6rem;
+    }
+    .fan-table th {
+      background: #e8f5e9;
+      color: #1b5e20;
+      font-weight: 700;
+      padding: 0.4rem 0.6rem;
+      text-align: center;
+      border-bottom: 2px solid #7cb342;
+    }
+    .fan-table td {
+      padding: 0.35rem 0.6rem;
+      border-bottom: 1px solid #eee;
+      text-align: center;
+    }
+    .fan-table tr:last-child td { border-bottom: none; }
+    .fan-table tr:hover td { background: #f1f8e9; }
+
+    /* ── Download button ── */
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, #7cb342 0%, #558b2f 100%);
+      color: white;
+      border: none;
+      border-radius: 7px;
+      padding: 0.55rem 1.2rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(124,179,66,0.3);
+      margin-top: 0.9rem;
+    }
+    .download-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(124,179,66,0.4);
+    }
+    .download-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── Note box ── */
+    .note {
+      background-color: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 0.8rem 1rem;
+      margin-top: 0.8rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #856404;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 12px 0 18px;
+      font-size: 0.78rem;
+      color: #999;
+      border-top: 1px solid #eee;
+      margin-top: 24px;
+    }
+  
+  /* ── SHARED MODOROLL STYLE ── */
+  :root {
+    --green:      #2e7d32;
+    --green-dark: #1b5e20;
+    --green-lt:   #c8e6c9;
+    --accent:     #4caf50;
+  }
+  body {
+    background: #111 url("img/formicbg.png") center/cover fixed !important;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,40,0,0.72);
+    z-index: 0;
+    pointer-events: none;
+  }
+  /* ── HIDE OLD HEADER ── */
+  .header-wrap, header, .logo-bar, .nav-bar { display: none !important; }
+  /* ── NEW NAV ── */
+  nav.modoroll-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,30,10,0.96);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 8px 24px;
+  }
+  nav.modoroll-nav a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 2px;
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+  }
+  nav.modoroll-nav a:hover { color: #fff; }
+  nav.modoroll-nav a.active { color: var(--accent); border-color: var(--accent); }
+  /* ── HERO TIGHTEN ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 0 !important;
+  }
+  .hero-inner { padding: 16px !important; }
+  .hero::before, .hero::after { display: none !important; }
+  .hero h1 { text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+  /* ── CONTENT LAYERS ── */
+  .wrap, .page-wrap, main { position: relative; z-index: 1; }
+  .panel { position: relative; z-index: 1; }
+  main { padding-top: 0 !important; }
+
+</style>
+</head>
+<body>
+<nav class="modoroll-nav">
+  <a href="BOM_Generator_Unified.html">Models</a>
+  <a href="Kit_Tools.html">Kits</a>
+  <a href="PartNumber_Tools.html">Parts</a>
+  <a href="Resources.html">Docs/Worksheets</a>
+  <a href="Calcs.html" class="active">Checks/Calcs</a>
+</nav>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>SKEW CALCULATOR</h1>
+        <p>Determine skew length and side travel distance for package alignment applications</p>
+      </div>
+    </section>
+
+    <div class="container">
+
+      <!-- ── INPUTS ── -->
+      <div class="panel">
+        <h2>📐 Inputs</h2>
+
+        <h3>Mandatory</h3>
+        <div class="input-grid">
+          <div class="input-group">
+            <label for="pkg-length">Package Length (in)</label>
+            <input type="number" id="pkg-length" min="0" step="0.01" placeholder="e.g. 24">
+          </div>
+          <div class="input-group">
+            <label for="pkg-width">Package Width (in)</label>
+            <input type="number" id="pkg-width" min="0" step="0.01" placeholder="e.g. 16">
+          </div>
+          <div class="input-group">
+            <label for="bf-dist">BF Distance (in)</label>
+            <input type="number" id="bf-dist" min="0" step="0.01" placeholder="e.g. 21">
+          </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <h3>Conditional <span style="font-weight:400; font-size:0.82rem; color:#888;">(leave blank to use default)</span></h3>
+        <div class="input-grid">
+          <div class="input-group">
+            <label for="side-travel">Side Travel Distance (in)</label>
+            <input type="number" id="side-travel" min="0" step="0.01" placeholder="Default: BF − Width" class="conditional">
+            <span class="input-hint">The distance the package moves laterally</span>
+          </div>
+          <div class="input-group">
+            <label for="skew-length">Skew Length (in)</label>
+            <input type="number" id="skew-length" min="0" step="0.01" placeholder="Leave blank to calculate" class="conditional">
+            <span class="input-hint">The distance the package travels while being skewed</span>
+          </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <h3>Zone Options</h3>
+        <div class="input-grid">
+          <div class="input-group">
+            <label for="zone-size">Zone Size</label>
+            <select id="zone-size">
+              <option value="24">24" Zone (8 rollers)</option>
+              <option value="30" selected>30" Zone (10 rollers)</option>
+              <option value="36">36" Zone (12 rollers)</option>
+            </select>
+            <span class="input-hint">Roller count and fan profile update automatically</span>
+          </div>
+        </div>
+        <div class="checkbox-row">
+          <label class="checkbox-item">
+            <input type="checkbox" id="include-leadin">
+            Include Lead-in Zone (<span class="leadin-label">30"</span> fan)
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="include-leadout">
+            Include Lead-out Zone (<span class="leadout-label">30"</span> fan )
+          </label>
+        </div>
+      </div>
+
+      <!-- ── RESULTS ── -->
+      <div class="panel" id="results-panel">
+        <h2>📊 Results</h2>
+        <div id="results-body">
+          <div class="results-placeholder">Enter package length, width, and BF distance above to see results.</div>
+        </div>
+        <button class="download-btn" id="download-btn" onclick="downloadXlsx()" disabled>
+          ⬇ Download Results (.xlsx)
+        </button>
+      </div>
+
+      <!-- ── ZONE BREAKDOWN ── -->
+      <div class="panel" id="zone-panel" style="display:none;">
+        <h2>🔢 Zone Breakdown</h2>
+        <div id="zone-body"></div>
+      </div>
+
+      <!-- ── HARDWARE REFERENCE ── -->
+      <div class="panel">
+        <h2>⚙️ Hardware Reference</h2>
+        <table class="hw-table">
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Zone Length</td><td>30"</td></tr>
+            <tr><td>Rollers per Zone</td><td>10</td></tr>
+            <tr><td>Roller Center Spacing</td><td>3"</td></tr>
+            <tr><td>Full Skew Angle</td><td>7.0°</td></tr>
+            <tr><td>Lead-in Fan Profile</td><td>Pos 1: 0.0° | Pos 2: 1.4° | Pos 3: 2.8° | Pos 4: 4.2° | Pos 5: 5.6° | Pos 6–10: 7.0°</td></tr>
+            <tr><td>Lead-out Fan Profile</td><td>Pos 1–5: 7.0° | Pos 6: 5.6° | Pos 7: 4.2° | Pos 8: 2.8° | Pos 9: 1.4° | Pos 10: 0.0°</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /container -->
+  </main>
+
+  <footer>
+    Skew Calculator &mdash; Version 1.0 &nbsp;|&nbsp; ModoEight &copy; 2026
+  </footer>
+
+  <script>
+    // ── Hardware constants ──────────────────────────────────────────────────────
+    const ROLLER_SPACING = 3;      // inches between roller centers (constant)
+    const FULL_SKEW_DEG  = 7.0;   // degrees (constant)
+
+    // Fan ramp: first 5 positions always 0°→5.6°, remaining positions at 7°
+    // Lead-in: ramp up.  Lead-out: mirror (ramp down).
+    function buildFanAngles(numRollers) {
+      const ramp = [0.0, 1.4, 2.8, 4.2, 5.6]; // positions 1–5
+      const leadin  = [];
+      const leadout = [];
+      for (let i = 0; i < numRollers; i++) {
+        leadin.push(i < ramp.length ? ramp[i] : 7.0);
+      }
+      // Lead-out is the mirror of lead-in
+      for (let i = 0; i < numRollers; i++) {
+        leadout.push(leadin[numRollers - 1 - i]);
+      }
+      return { leadin, leadout };
+    }
+
+    // Zone configuration lookup: zone length → { rollers, leadin, leadout, ... }
+    const ZONE_CONFIG = {
+      24: buildZoneConfig(24, 8),
+      30: buildZoneConfig(30, 10),
+      36: buildZoneConfig(36, 12),
+    };
+
+    function buildZoneConfig(zoneLen, numRollers) {
+      const { leadin, leadout } = buildFanAngles(numRollers);
+      const fullZoneSideTravel = numRollers * rollerSideTravel(FULL_SKEW_DEG);
+      const leadinSideTravel   = leadin.reduce((s, a) => s + rollerSideTravel(a), 0);
+      const leadoutSideTravel  = leadout.reduce((s, a) => s + rollerSideTravel(a), 0);
+      return { zoneLen, numRollers, leadin, leadout,
+               fullZoneSideTravel, leadinSideTravel, leadoutSideTravel };
+    }
+
+    // Active config — updated when dropdown changes
+    let CFG = ZONE_CONFIG[30];
+
+    // Side travel contributed by a single roller at a given angle (degrees)
+    // Formula: ROLLER_SPACING * tan(angle_rad)
+    //   - ROLLER_SPACING (3") = how much forward distance each roller “owns”
+    //   - tan(angle) = lateral movement per unit of forward travel (right-triangle ratio)
+    //   - Degrees → radians: multiply by π/180 (required by Math.tan)
+    function rollerSideTravel(angleDeg) {
+      return ROLLER_SPACING * Math.tan(angleDeg * Math.PI / 180);
+    }
+
+    // Convenience aliases that always reflect the active zone config
+    function ZONE_LENGTH()           { return CFG.zoneLen; }
+    function ROLLERS_PER_ZONE()      { return CFG.numRollers; }
+    function FULL_ZONE_SIDE_TRAVEL() { return CFG.fullZoneSideTravel; }
+    function LEADIN_SIDE_TRAVEL()    { return CFG.leadinSideTravel; }
+    function LEADOUT_SIDE_TRAVEL()   { return CFG.leadoutSideTravel; }
+    function LEADIN_ANGLES()         { return CFG.leadin; }
+    function LEADOUT_ANGLES()        { return CFG.leadout; }
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+
+    function fmt(val, decimals = 2) {
+      return parseFloat(val.toFixed(decimals));
+    }
+
+    function fmtIn(val) {
+      return fmt(val, 3) + '"';
+    }
+
+    // Given a required side travel from FULL skew zones only, return the
+    // rail length (skew length) of full-skew zones needed.
+    function sideToSkewLength(sideTravel) {
+      const sidePerInch = FULL_ZONE_SIDE_TRAVEL() / ZONE_LENGTH();
+      return sideTravel / sidePerInch;
+    }
+
+    // Given a skew length (rail inches) of full-skew zones, return side travel.
+    function skewLengthToSide(skewLength) {
+      const sidePerInch = FULL_ZONE_SIDE_TRAVEL() / ZONE_LENGTH();
+      return skewLength * sidePerInch;
+    }
+
+    // Number of full skew zones needed to cover a given skew length
+    function zonesNeeded(skewLength) {
+      return Math.ceil(skewLength / ZONE_LENGTH());
+    }
+
+    // ── Main calculation ─────────────────────────────────────────────────────
+
+    function calculate() {
+      const pkgLength  = parseFloat(document.getElementById('pkg-length').value);
+      const pkgWidth   = parseFloat(document.getElementById('pkg-width').value);
+      const bf         = parseFloat(document.getElementById('bf-dist').value);
+      const sideInput  = parseFloat(document.getElementById('side-travel').value);
+      const skewInput  = parseFloat(document.getElementById('skew-length').value);
+      const hasLeadIn  = document.getElementById('include-leadin').checked;
+      const hasLeadOut = document.getElementById('include-leadout').checked;
+
+      const resultsBody = document.getElementById('results-body');
+      const zonePanel   = document.getElementById('zone-panel');
+      const zoneBody    = document.getElementById('zone-body');
+
+      // Require mandatory fields
+      if (isNaN(pkgLength) || isNaN(pkgWidth) || isNaN(bf)) {
+        resultsBody.innerHTML = '<div class="results-placeholder">Enter package length, width, and BF distance above to see results.</div>';
+        zonePanel.style.display = 'none';
+        return;
+      }
+
+      // Determine mode
+      const hasSideInput  = !isNaN(sideInput) && document.getElementById('side-travel').value !== '';
+      const hasSkewInput  = !isNaN(skewInput) && document.getElementById('skew-length').value !== '';
+
+      // Fixed side travel contributed by lead-in/out zones
+      const fixedSideTravel = (hasLeadIn ? LEADIN_SIDE_TRAVEL() : 0)
+                            + (hasLeadOut ? LEADOUT_SIDE_TRAVEL() : 0);
+      const fixedSkewLength = (hasLeadIn ? ZONE_LENGTH() : 0)
+                            + (hasLeadOut ? ZONE_LENGTH() : 0);
+
+      let targetSide, computedSkewLength, computedSide, mode;
+
+      if (!hasSideInput && !hasSkewInput) {
+        // ── Mode A: default side travel = BF - package width ──
+        mode = 'A';
+        targetSide = bf - pkgWidth;
+        if (targetSide < 0) targetSide = 0;
+        const remainingSide = Math.max(0, targetSide - fixedSideTravel);
+        const fullZoneSkewLength = sideToSkewLength(remainingSide);
+        computedSkewLength = fullZoneSkewLength + fixedSkewLength;
+        computedSide = targetSide;
+
+      } else if (hasSideInput && !hasSkewInput) {
+        // ── Mode B: user provides side travel → compute skew length ──
+        mode = 'B';
+        targetSide = sideInput;
+        const remainingSide = Math.max(0, targetSide - fixedSideTravel);
+        const fullZoneSkewLength = sideToSkewLength(remainingSide);
+        computedSkewLength = fullZoneSkewLength + fixedSkewLength;
+        computedSide = targetSide;
+
+      } else if (!hasSideInput && hasSkewInput) {
+        // ── Mode C: user provides skew length → compute side travel ──
+        mode = 'C';
+        const fullZoneLength = Math.max(0, skewInput - fixedSkewLength);
+        computedSide = skewLengthToSide(fullZoneLength) + fixedSideTravel;
+        computedSkewLength = skewInput;
+        targetSide = computedSide;
+
+      } else {
+        // Both provided — treat skew length as authoritative, show both
+        mode = 'D';
+        const fullZoneLength = Math.max(0, skewInput - fixedSkewLength);
+        computedSide = skewLengthToSide(fullZoneLength) + fixedSideTravel;
+        computedSkewLength = skewInput;
+        targetSide = sideInput;
+      }
+
+      // ── Derived values ──
+      const defaultSide    = bf - pkgWidth;
+      const fullZonesOnly  = Math.max(0, computedSkewLength - fixedSkewLength);
+      const numFullZones   = zonesNeeded(fullZonesOnly);
+      const totalZones     = numFullZones + (hasLeadIn ? 1 : 0) + (hasLeadOut ? 1 : 0);
+      const totalConvLength = totalZones * ZONE_LENGTH();
+
+      // Over-travel check
+      const overTravel = computedSide > (bf - pkgWidth);
+
+      // ── Build result cards ──
+      let cards = '';
+
+      if (mode === 'A' || mode === 'B') {
+        // Primary output: skew length
+        cards += resultCard(fmtIn(computedSkewLength), 'Required Skew Length', 'Rail-direction travel distance', '');
+      } else {
+        // Primary output: side travel
+        const warnClass = overTravel ? 'warning' : '';
+        cards += resultCard(fmtIn(computedSide), 'Side Travel Distance', 'Lateral movement of package', warnClass);
+      }
+
+      cards += resultCard(fmtIn(computedSide > 0 ? computedSide : targetSide),
+                          'Side Travel Distance',
+                          'Lateral movement (BF direction)',
+                          (mode === 'A' || mode === 'B') ? 'secondary' : 'info');
+
+      if (mode !== 'A' && mode !== 'B') {
+        // Also show skew length as secondary
+        cards += resultCard(fmtIn(computedSkewLength), 'Skew Length', 'Rail-direction travel', 'secondary');
+      }
+
+      cards += resultCard(numFullZones + (numFullZones === 1 ? ' zone' : ' zones'),
+                          'Full Skew Zones Required',
+                          '30" each at 7.0°',
+                          'info');
+
+      cards += resultCard(totalZones + (totalZones === 1 ? ' zone' : ' zones'),
+                          'Total Zones',
+                          'Including lead-in/out',
+                          'info');
+
+      cards += resultCard(totalConvLength + '"',
+                          'Total Conveyor Length',
+                          'Full skew section',
+                          'secondary');
+
+      // Remove duplicate side travel card if mode A/B (it's the primary)
+      // Rebuild cleanly to avoid duplication
+      cards = buildResultCards(mode, computedSkewLength, computedSide, targetSide,
+                               numFullZones, totalZones, totalConvLength, overTravel,
+                               hasLeadIn, hasLeadOut, bf, pkgWidth, defaultSide);
+
+      resultsBody.innerHTML = cards;
+
+      // ── Over-travel note ──
+      if (overTravel && (mode === 'C' || mode === 'D')) {
+        resultsBody.innerHTML += `<div class="note">
+          <strong>⚠ Max Side Travel Achieved</strong>
+        </div>`;
+      }
+
+      // ── Zone breakdown ──
+      zonePanel.style.display = 'block';
+      zoneBody.innerHTML = buildZoneBreakdown(hasLeadIn, hasLeadOut, numFullZones,
+                                              computedSide, computedSkewLength,
+                                              fixedSideTravel, fixedSkewLength);
+
+      // ── Save state for xlsx download and enable button ──
+      _lastResult = {
+        pkgLength, pkgWidth, bf,
+        sideInput, skewInput,
+        hasSideInput, hasSkewInput,
+        hasLeadIn, hasLeadOut,
+        mode, computedSide, computedSkewLength,
+        numFullZones, totalZones, totalConvLength, overTravel
+      };
+      document.getElementById('download-btn').disabled = false;
+    }
+
+    // ── Build result cards cleanly ───────────────────────────────────────────
+
+    function buildResultCards(mode, skewLen, side, targetSide, numFull, totalZones,
+                               totalLen, overTravel, hasLeadIn, hasLeadOut, bf, pkgWidth, defaultSide) {
+      let html = '<div class="results-grid">';
+
+      if (mode === 'A') {
+        html += card(fmtIn(skewLen),    'Required Skew Length',       'Rail-direction travel to achieve default side travel', '');
+        html += card(fmtIn(side),       'Side Travel Distance',        `Default: BF (${bf}") − Width (${pkgWidth}") = ${fmtIn(defaultSide)}`, 'secondary');
+      } else if (mode === 'B') {
+        html += card(fmtIn(skewLen),    'Required Skew Length',        'Rail-direction travel to achieve specified side travel', '');
+        html += card(fmtIn(side),       'Side Travel Distance',        'As specified by user', 'secondary');
+      } else if (mode === 'C') {
+        const cls = overTravel ? 'warning' : '';
+        html += card(fmtIn(side),       'Side Travel Distance',        'Computed from specified skew length', cls);
+        html += card(fmtIn(skewLen),    'Skew Length',                 'As specified by user', 'secondary');
+      } else {
+        const cls = overTravel ? 'warning' : '';
+        html += card(fmtIn(side),       'Computed Side Travel',        'From specified skew length', cls);
+        html += card(fmtIn(targetSide), 'Specified Side Travel',       'As entered by user', 'secondary');
+        html += card(fmtIn(skewLen),    'Skew Length',                 'As specified by user', 'secondary');
+      }
+
+      html += card(numFull + (numFull === 1 ? ' zone' : ' zones'),
+                   'Full Skew Zones',
+                   `${ZONE_LENGTH()}" each at 7.0°`, 'info');
+
+      html += card(totalZones + (totalZones === 1 ? ' zone' : ' zones'),
+                   'Total Zones',
+                   (hasLeadIn ? 'Lead-in included. ' : '') + (hasLeadOut ? 'Lead-out included.' : ''),
+                   'info');
+
+      html += card(totalLen + '"',
+                   'Total Conveyor Length',
+                   'All skew zones combined', 'secondary');
+
+      html += '</div>';
+      return html;
+    }
+
+    function card(value, label, sub, extraClass) {
+      return `<div class="result-card ${extraClass}">
+        <div class="result-value">${value}</div>
+        <div class="result-label">${label}</div>
+        ${sub ? `<div class="result-sub">${sub}</div>` : ''}
+      </div>`;
+    }
+
+    // Kept for legacy call — not used after refactor
+    function resultCard(value, label, sub, extraClass) {
+      return card(value, label, sub, extraClass);
+    }
+
+    // ── Zone breakdown table ─────────────────────────────────────────────────
+
+    function buildZoneBreakdown(hasLeadIn, hasLeadOut, numFull,
+                                 totalSide, totalSkew, fixedSide, fixedSkew) {
+      const rows = [];
+      let cumSide  = 0;
+      let cumSkew  = 0;
+
+      if (hasLeadIn) {
+        const s = LEADIN_SIDE_TRAVEL();
+        cumSide += s; cumSkew += ZONE_LENGTH();
+        rows.push({ label: 'Lead-in (Fan)', length: ZONE_LENGTH(), side: s,
+                    cumSide, cumSkew, profile: 'Fan ramp-up (0°→7°)' });
+      }
+
+      for (let i = 1; i <= numFull; i++) {
+        const s = FULL_ZONE_SIDE_TRAVEL();
+        cumSide += s; cumSkew += ZONE_LENGTH();
+        rows.push({ label: `Full Skew Zone ${i}`, length: ZONE_LENGTH(), side: s,
+                    cumSide, cumSkew,
+                    profile: `7.0° (all ${ROLLERS_PER_ZONE()} rollers)` });
+      }
+
+      if (hasLeadOut) {
+        const s = LEADOUT_SIDE_TRAVEL();
+        cumSide += s; cumSkew += ZONE_LENGTH();
+        rows.push({ label: 'Lead-out (Fan)', length: ZONE_LENGTH(), side: s,
+                    cumSide, cumSkew, profile: 'Fan ramp-down (7°→0°)' });
+      }
+
+      if (rows.length === 0) {
+        return '<p style="color:#888; font-style:italic; font-size:0.9rem;">No zones to display.</p>';
+      }
+
+      let html = `<table class="fan-table">
+        <thead>
+          <tr>
+            <th>Zone</th>
+            <th>Zone Length</th>
+            <th>Side Travel (zone)</th>
+            <th>Cumulative Side Travel</th>
+            <th>Cumulative Skew Length</th>
+            <th>Profile</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+      rows.forEach(r => {
+        html += `<tr>
+          <td>${r.label}</td>
+          <td>${r.length}"</td>
+          <td>${fmt(r.side, 4)}"</td>
+          <td>${fmt(r.cumSide, 4)}"</td>
+          <td>${r.cumSkew}"</td>
+          <td>${r.profile}</td>
+        </tr>`;
+      });
+
+      html += '</tbody></table>';
+
+      // Fan roller detail tables
+      if (hasLeadIn || hasLeadOut) {
+        html += buildFanDetail(hasLeadIn, hasLeadOut);
+      }
+
+      return html;
+    }
+
+    function buildFanDetail(hasLeadIn, hasLeadOut) {
+      let html = '';
+
+      if (hasLeadIn) {
+        html += '<h3 style="margin-top:1.2rem;">Lead-in Fan Zone — Roller Detail</h3>';
+        html += fanRollerTable(LEADIN_ANGLES(), 'Lead-in');
+      }
+      if (hasLeadOut) {
+        html += '<h3 style="margin-top:1.2rem;">Lead-out Fan Zone — Roller Detail</h3>';
+        html += fanRollerTable(LEADOUT_ANGLES(), 'Lead-out');
+      }
+      return html;
+    }
+
+    function fanRollerTable(angles, label) {
+      let html = `<table class="fan-table">
+        <thead>
+          <tr>
+            <th>Roller Position</th>
+            <th>Skew Angle</th>
+            <th>Side Travel Contribution</th>
+            <th>Cumulative Side Travel</th>
+          </tr>
+        </thead>
+        <tbody>`;
+      let cum = 0;
+      angles.forEach((a, i) => {
+        const st = rollerSideTravel(a);
+        cum += st;
+        html += `<tr>
+          <td>Position ${i + 1}</td>
+          <td>${a.toFixed(1)}°</td>
+          <td>${fmt(st, 5)}"</td>
+          <td>${fmt(cum, 5)}"</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      return html;
+    }
+
+    // ── xlsx download ────────────────────────────────────────────────────────
+
+    // Store last computed state for download
+    let _lastResult = null;
+
+    function downloadXlsx() {
+      if (!_lastResult) return;
+      const r = _lastResult;
+      const wb = XLSX.utils.book_new();
+
+      // ── Sheet 1: Summary ──
+      const summaryData = [
+        ['Skew Calculator — Results', '', ''],
+        ['Generated', new Date().toLocaleString(), ''],
+        ['', '', ''],
+        ['INPUTS', '', ''],
+        ['Zone Size (in)', ZONE_LENGTH(), ''],
+        ['Package Length (in)',  r.pkgLength,  ''],
+        ['Package Width (in)',   r.pkgWidth,   ''],
+        ['BF Distance (in)',     r.bf,         ''],
+        ['Side Travel Input (in)', r.hasSideInput ? r.sideInput : '(default)', ''],
+        ['Skew Length Input (in)', r.hasSkewInput ? r.skewInput : '(calculated)', ''],
+        ['Lead-in Zone',         r.hasLeadIn  ? 'Yes' : 'No', ''],
+        ['Lead-out Zone',        r.hasLeadOut ? 'Yes' : 'No', ''],
+        ['', '', ''],
+        ['OUTPUTS', '', ''],
+        ['Calculation Mode',     r.mode === 'A' ? 'A — Default side travel (BF − Width)'
+                                : r.mode === 'B' ? 'B — Specified side travel'
+                                : r.mode === 'C' ? 'C — Specified skew length'
+                                : 'D — Both specified', ''],
+        ['Side Travel Distance (in)',  parseFloat(r.computedSide.toFixed(4)),  ''],
+        ['Skew Length (in)',           parseFloat(r.computedSkewLength.toFixed(4)), ''],
+        ['Full Skew Zones Required',   r.numFullZones, ''],
+        ['Total Zones',                r.totalZones,   ''],
+        ['Total Conveyor Length (in)', r.totalConvLength, ''],
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      wsSummary['!cols'] = [{wch:32},{wch:28},{wch:20}];
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+      // ── Sheet 2: Zone Breakdown ──
+      const zoneHeader = ['Zone', 'Zone Length (in)', 'Side Travel — Zone (in)',
+                          'Cumulative Side Travel (in)', 'Cumulative Skew Length (in)', 'Profile'];
+      const zoneRows = [zoneHeader];
+      let cumSide = 0, cumSkew = 0;
+      if (r.hasLeadIn) {
+        cumSide += LEADIN_SIDE_TRAVEL(); cumSkew += ZONE_LENGTH();
+        zoneRows.push(['Lead-in (Fan)', ZONE_LENGTH(),
+          parseFloat(LEADIN_SIDE_TRAVEL().toFixed(5)),
+          parseFloat(cumSide.toFixed(5)), cumSkew, 'Fan ramp-up (0°→7°)']);
+      }
+      for (let i = 1; i <= r.numFullZones; i++) {
+        cumSide += FULL_ZONE_SIDE_TRAVEL(); cumSkew += ZONE_LENGTH();
+        zoneRows.push([`Full Skew Zone ${i}`, ZONE_LENGTH(),
+          parseFloat(FULL_ZONE_SIDE_TRAVEL().toFixed(5)),
+          parseFloat(cumSide.toFixed(5)), cumSkew,
+          `7.0° (all ${ROLLERS_PER_ZONE()} rollers)`]);
+      }
+      if (r.hasLeadOut) {
+        cumSide += LEADOUT_SIDE_TRAVEL(); cumSkew += ZONE_LENGTH();
+        zoneRows.push(['Lead-out (Fan)', ZONE_LENGTH(),
+          parseFloat(LEADOUT_SIDE_TRAVEL().toFixed(5)),
+          parseFloat(cumSide.toFixed(5)), cumSkew, 'Fan ramp-down (7°→0°)']);
+      }
+      const wsZones = XLSX.utils.aoa_to_sheet(zoneRows);
+      wsZones['!cols'] = [{wch:22},{wch:16},{wch:24},{wch:28},{wch:28},{wch:26}];
+      XLSX.utils.book_append_sheet(wb, wsZones, 'Zone Breakdown');
+
+      // ── Sheet 3: Fan Roller Detail ──
+      const fanHeader = ['Zone Type', 'Roller Position', 'Skew Angle (°)',
+                         'Side Travel — Roller (in)', 'Cumulative Side Travel (in)'];
+      const fanRows = [fanHeader];
+      const addFanRows = (angles, label) => {
+        let cum = 0;
+        angles.forEach((a, i) => {
+          const st = rollerSideTravel(a);
+          cum += st;
+          fanRows.push([label, i + 1, a, parseFloat(st.toFixed(6)), parseFloat(cum.toFixed(6))]);
+        });
+      };
+      if (r.hasLeadIn)  addFanRows(LEADIN_ANGLES(),  'Lead-in');
+      if (r.hasLeadOut) addFanRows(LEADOUT_ANGLES(), 'Lead-out');
+      if (r.hasLeadIn || r.hasLeadOut) {
+        const wsFan = XLSX.utils.aoa_to_sheet(fanRows);
+        wsFan['!cols'] = [{wch:14},{wch:16},{wch:16},{wch:26},{wch:28}];
+        XLSX.utils.book_append_sheet(wb, wsFan, 'Fan Roller Detail');
+      }
+
+      // ── Sheet 4: Hardware Reference (reflects active zone size) ──
+      const hwData = [
+        ['Parameter', 'Value'],
+        ['Zone Size (in)', ZONE_LENGTH()],
+        ['Rollers per Zone', ROLLERS_PER_ZONE()],
+        ['Roller Center Spacing (in)', ROLLER_SPACING],
+        ['Full Skew Angle (°)', FULL_SKEW_DEG],
+      ];
+      LEADIN_ANGLES().forEach((a, i) => hwData.push([`Lead-in Fan — Pos ${i+1}`, a]));
+      LEADOUT_ANGLES().forEach((a, i) => hwData.push([`Lead-out Fan — Pos ${i+1}`, a]));
+      const wsHw = XLSX.utils.aoa_to_sheet(hwData);
+      wsHw['!cols'] = [{wch:28},{wch:14}];
+      XLSX.utils.book_append_sheet(wb, wsHw, 'Hardware Reference');
+
+      const ts = new Date().toISOString().slice(0,10);
+      XLSX.writeFile(wb, `Skew_Calculator_${ts}.xlsx`);
+    }
+
+    // ── Zone size change handler ───────────────────────────────────────────────
+
+    function onZoneSizeChange() {
+      const zoneLen = parseInt(document.getElementById('zone-size').value, 10);
+      CFG = ZONE_CONFIG[zoneLen];
+
+      // Update checkbox labels
+      document.querySelectorAll('.leadin-label, .leadout-label').forEach(el => {
+        el.textContent = zoneLen + '"';
+      });
+
+      // Update hardware reference table
+      updateHwTable();
+
+      // Recalculate
+      calculate();
+    }
+
+    function updateHwTable() {
+      const tbody = document.querySelector('.hw-table tbody');
+      if (!tbody) return;
+      const li = LEADIN_ANGLES();
+      const lo = LEADOUT_ANGLES();
+      const liStr = li.map((a, i) => `Pos ${i+1}: ${a.toFixed(1)}°`).join(' | ');
+      const loStr = lo.map((a, i) => `Pos ${i+1}: ${a.toFixed(1)}°`).join(' | ');
+      tbody.innerHTML = `
+        <tr><td>Zone Length</td><td>${ZONE_LENGTH()}"</td></tr>
+        <tr><td>Rollers per Zone</td><td>${ROLLERS_PER_ZONE()}</td></tr>
+        <tr><td>Roller Center Spacing</td><td>${ROLLER_SPACING}"</td></tr>
+        <tr><td>Full Skew Angle</td><td>${FULL_SKEW_DEG}°</td></tr>
+        <tr><td>Lead-in Fan Profile</td><td>${liStr}</td></tr>
+        <tr><td>Lead-out Fan Profile</td><td>${loStr}</td></tr>
+      `;
+    }
+
+    // ── Event listeners ──────────────────────────────────────────────────────
+
+    ['pkg-length','pkg-width','bf-dist','side-travel','skew-length',
+     'include-leadin','include-leadout'].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', calculate);
+      el.addEventListener('change', calculate);
+    });
+
+    document.getElementById('zone-size').addEventListener('change', onZoneSizeChange);
+
+    // Initial render
+    calculate();
+  </script>
+
+</body>
+</html>

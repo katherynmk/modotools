@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>MODOROLL — Project Scope & Specifications V1.14</title>
+  <meta name="description" content="MODOROLL Scope and Specifications Worksheet"/>
+  <link rel="icon" href="https://www.modotools.com/favicon.ico"/>
+  <!-- (Optional) SheetJS for XLSX export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --m8-green:#1ad51d;
+      --page-bg:#006600;
+      --header-pad:132px;
+      --hero-h:28vh;
+      --overlay:rgba(0,0,0,.45);
+      --maxw:1200px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111;background:var(--page-bg)}
+    a{color:inherit;text-decoration:none}
+    main{padding-top:0}
+
+    /* Header */
+    .header-wrap{position:fixed;inset:0 0 auto 0;z-index:9999;display:grid;grid-template-rows:auto 44px}
+    .logo-bar{display:flex;justify-content:center;align-items:center;background:#fff;padding:10px 16px;border-bottom:1px solid #eee;filter:drop-shadow(0 4px 12px rgba(0,0,0,.04))}
+    .logo-bar img{height:72px;width:auto;max-width:min(100%,920px)}
+    .nav-bar{display:flex;gap:24px;align-items:center;justify-content:center;background:#fff;border-bottom:1px solid #eee;overflow-x:auto;white-space:nowrap}
+    .nav-bar a{display:inline-block;padding:10px 6px;font-weight:600}
+    .nav-bar a:hover{border-bottom:2px solid var(--m8-green)}
+    @media (max-width:640px){:root{--header-pad:118px}.logo-bar img{height:60px}.nav-bar{gap:14px}}
+
+    /* Hero */
+    .hero{position:relative;min-height:var(--hero-h);display:grid;place-items:center;text-align:center;color:#fff;overflow:clip}
+    .hero::before{content:"";position:fixed;inset:0;background-image:url("img/formicbg.png");background-size:cover;background-position:center;background-repeat:no-repeat;z-index:-2;filter:grayscale(100%) brightness(0.7)}
+    .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,var(--overlay),rgba(0,0,0,.3));z-index:-1}
+    .hero-inner{width:min(92vw,var(--maxw));padding:48px 16px}
+    .hero h1{font-size:clamp(26px,4.2vw,38px);line-height:1.05;margin:0 0 8px;font-weight:800;letter-spacing:-.02em}
+    .hero p{font-size:clamp(14px,2.1vw,18px);opacity:.95;margin:0}
+
+    /* Form panel */
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:28px 16px 56px}
+    .panel{background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+    .section-pad{padding:22px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .kv{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1 1 280px}
+    .label{font-size:12px;font-weight:800;letter-spacing:.02em;text-transform:uppercase;color:#006600}
+    .input,.select,.textarea{padding:10px 12px;border:1px solid #dcdcdc;border-radius:10px;background:#fff;font-size:14px}
+    .textarea{min-height:7rem}
+    .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+    .group-title{font-size:15px;font-weight:800;color:#0e4509;margin:6px 0 10px}
+
+    /* Actions */
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    button{cursor:pointer;border-radius:10px;border:1px solid #dcdcdc;background:#fff;padding:10px 14px;font-weight:700}
+    .btn-primary{background:var(--m8-green);border-color:transparent;color:#111}
+    .muted{opacity:.7}
+  
+  /* ── SHARED MODOROLL STYLE ── */
+  :root {
+    --green:      #2e7d32;
+    --green-dark: #1b5e20;
+    --green-lt:   #c8e6c9;
+    --accent:     #4caf50;
+  }
+  body {
+    background: #111 url("img/formicbg.png") center/cover fixed !important;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,40,0,0.72);
+    z-index: 0;
+    pointer-events: none;
+  }
+  /* ── HIDE OLD HEADER ── */
+  .header-wrap, header, .logo-bar, .nav-bar { display: none !important; }
+  /* ── NEW NAV ── */
+  nav.modoroll-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,30,10,0.96);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 8px 24px;
+  }
+  nav.modoroll-nav a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 2px;
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+  }
+  nav.modoroll-nav a:hover { color: #fff; }
+  nav.modoroll-nav a.active { color: var(--accent); border-color: var(--accent); }
+  /* ── LOGO BAR ── */
+  .modoroll-logo-bar {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 0 4px;
+  }
+  .modoroll-logo-bar img { height: 52px; }
+  /* ── HERO TIGHTEN ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 0 !important;
+  }
+  .hero-inner { padding: 16px !important; }
+  .hero::before, .hero::after { display: none !important; }
+  .hero h1 { text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+  /* ── CONTENT LAYERS ── */
+  .wrap, .page-wrap, main { position: relative; z-index: 1; }
+  .panel { position: relative; z-index: 1; }
+  main { padding-top: 0 !important; }
+
+</style>
+</head>
+<body>
+<nav class="modoroll-nav">
+  <a href="BOM_Generator_Unified.html">Models</a>
+  <a href="Kit_Tools.html">Kits</a>
+  <a href="PartNumber_Tools.html">Parts</a>
+  <a href="Resources.html" class="active">Docs/Worksheets</a>
+  <a href="Calcs.html">Checks/Calcs</a>
+</nav>
+<div class="modoroll-logo-bar">
+  <a href="index.html"><img src="img/MRHeader.png" alt="MODOROLL"></a>
+</div>
+  <!-- Fixed Header -->
+  <header class="header-wrap">
+    <div class="logo-bar">
+      <a href="index.html"><img src="img/MRHeader.png" alt="MODOROLL logo"/></a>
+    </div>
+    <nav class="nav-bar" aria-label="Main">
+      <a href="BOM_Generator_Unified.html" aria-current="page">Models</a>
+      <a href="Kit_Tools.html">Kits</a>
+      <a href="PartNumber_Tools.html">Parts</a>
+      <a style="color:green" href="Resources.html">Docs/Worksheets</a>
+      <a href="Calcs.html">Checks/Calcs</a>
+    </nav>	
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero" role="region" aria-label="Project Scope hero">
+      <div class="hero-inner">
+        <h1>PROJECT SCOPE & SPECIFICATIONS</h1>
+        <p>Fill out the worksheet, then copy the summary or download XLSX.</p>
+      </div>
+    </section>
+
+    <!-- Scope Form -->
+    <section class="wrap">
+      <div class="panel section-pad">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px">
+          <h2 style="margin:0">MODOROLL Scope & Specifications Worksheet</h2>
+          <span class="muted">V1.14</span>
+        </div>
+
+        <!-- ACTIONS (Preview/PDF/JSON removed per request) -->
+        <div class="actions" style="margin-bottom:14px">
+          <button id="btnCopy" class="btn-primary">Copy Summary</button>
+          <button id="btnXLSX" class="btn-primary">Download XLSX</button>
+          <span class="muted" id="statusMsg" aria-live="polite"></span>
+        </div>
+
+        <form id="scopeForm" class="space-y-4">
+          <!-- Job Data -->
+          <div>
+            <div class="group-title">Job Data</div>
+            <div class="grid3">
+              <div class="kv"><label class="label">Job number</label><input class="input" name="jobNumber" placeholder="e.g., 25-001"/></div>
+              <div class="kv"><label class="label">Integrator / End user</label><input class="input" name="integrator" placeholder="Company / End user"/></div>
+              <div class="kv"><label class="label">Nickname</label><input class="input" name="nickname" placeholder="Internal nickname"/></div>
+              <div class="kv"><label class="label">Sales person</label><input class="input" name="salesperson" placeholder="Sales lead"/></div>
+              <div class="kv"><label class="label">Job site location</label><input class="input" name="siteLocation" placeholder="City, ST"/></div>
+              <div class="kv"><label class="label">Ship date</label><input type="date" class="input" name="shipDate"/></div>
+              <div class="kv"><label class="label">Installation date</label><input type="date" class="input" name="installDate"/></div>
+              <div class="kv"><label class="label">Go-live date</label><input type="date" class="input" name="goLiveDate"/></div>
+              <div class="kv"><label class="label">Project manager</label><input class="input" name="projectManager" placeholder="Name"/></div>
+              <div class="kv"><label class="label">Side covers</label>
+                <select class="select" name="sideCovers"><option value="">—</option><option>1 side</option><option>Fully Dressed</option><option>None</option></select>
+              </div>
+              <div class="kv"><label class="label">Rate</label><input class="input" name="rate" placeholder="e.g., 35 cpm; 170 fpm"/></div>
+              <div class="kv"><label class="label">Package dims (largest)</label><input class="input" name="pkgLargest" placeholder="W × L × H (Weight lbs)"/></div>
+              <div class="kv"><label class="label">Package dims (smallest)</label><input class="input" name="pkgSmallest" placeholder="W × L × H (Weight lbs)"/></div>
+              <div class="kv"><label class="label">Uneven weight / dynamic mass?</label>
+                <select class="select" name="dynamicMass"><option value="">—</option><option>Yes</option><option>No</option></select>
+              </div>
+              <div class="kv"><label class="label">2D and 3D files included</label>
+                <select class="select" name="includeFiles"><option value="">—</option><option>Yes</option><option>No</option></select>
+              </div>
+              <div class="kv"><label class="label">Control type</label><input class="input" name="controlType" placeholder="Modolink, AS-i, ZPA"/></div>
+              <div class="kv"><label class="label">New/Updated designs?</label>
+                <select class="select" name="newDesign"><option value="">—</option><option>Yes</option><option>No</option></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Job Specifics -->
+          <div>
+            <div class="group-title">Job Specifics</div>
+            <div class="kv"><label class="label">Partners</label><textarea class="textarea" rows="6" name="partners" placeholder="Temple, Robotiq, Lewco"></textarea></div>
+            <div class="kv"><label class="label">Commissioning personnel</label><textarea class="textarea" rows="6" name="commissioning" placeholder="Names, roles, availability"></textarea></div>
+            <div class="kv"><label class="label">Deployment schedule</label><textarea class="textarea" rows="6" name="deployment" placeholder="Phased delivery plan…"></textarea></div>
+
+            <!-- RENAMED FIELD 
+            <div class="kv"><label class="label">First 2 segments of all standard models or Copy/Paste BOM</label>
+              <textarea class="textarea" rows="6" name="stdSegments" placeholder='FH120P21C3-4BI030 (Fliprail, RSH, 120" Rail, Powered, 21" BF, 3" C-C, 4 Zone, Belted Incline, 30" Zone)'></textarea>
+            </div>
+			/-->
+
+            <div class="kv"><label class="label">Non-standard models</label><textarea class="textarea" rows="6" name="nonStandard" placeholder="List each with written details"></textarea></div>
+            <div class="kv"><label class="label">Control specifics</label><textarea class="textarea" rows="6" name="controlHand" placeholder="- Hand-off details, start eyes, line-full eyes, stack lights, switches…"></textarea></div>
+            <div class="kv"><label class="label">Detailed description of operation</label><textarea class="textarea" rows="6" name="detailedOp" placeholder="- Direction of travel, pull-offs, run-offs, 3rd-party equipment, site obstructions…"></textarea></div>
+
+            <!-- NEW: TOP OF ROLLER (4 LINES) -->
+            <div class="kv"><label class="label">Top of Roller (TOR)</label>
+              <textarea class="textarea" rows="4" name="torNotes" placeholder='12in TOR, incline to 55in TOR'></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ===== Utilities =====
+    const form = document.getElementById('scopeForm');
+    const statusMsg = document.getElementById('statusMsg');
+
+    function setStatus(msg){ statusMsg.textContent = msg; setTimeout(()=> statusMsg.textContent="",1500); }
+
+    function nowStamp(){
+      const d = new Date();
+      const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+      const HH=String(d.getHours()).padStart(2,'0'), MM=String(d.getMinutes()).padStart(2,'0');
+      return { date:`${yyyy}-${mm}-${dd}`, time:`${HH}${MM}` };
+    }
+    function sanitizeFilename(s){ return (s||'').trim().replace(/\s+/g,'-').replace(/[\\/:*?"<>|]/g,''); }
+    function filenameBase(){
+      const fd = new FormData(form); const d = Object.fromEntries(fd.entries());
+      const {date,time} = nowStamp();
+      const parts = [sanitizeFilename(d.integrator), sanitizeFilename(d.nickname), sanitizeFilename(d.jobNumber), date, time].filter(Boolean);
+      return parts.length ? parts.join('_') : `Project-Scope_${date}_${time}`;
+    }
+
+    // ===== Summary text (no preview pane) =====
+    function buildSummaryText(){
+      const fd = new FormData(form);
+      const d = Object.fromEntries(fd.entries());
+      const sections = [
+        ["JOB DATA", [
+          ["Job number", d.jobNumber], ["Integrator / End user", d.integrator], ["Nickname", d.nickname],
+          ["Sales person", d.salesperson], ["Job site location", d.siteLocation],
+          ["Ship date", d.shipDate], ["Installation date", d.installDate], ["Go-live date", d.goLiveDate],
+          ["Project manager", d.projectManager], ["Side covers", d.sideCovers], ["Rate", d.rate],
+          ["Package dims (largest)", d.pkgLargest], ["Package dims (smallest)", d.pkgSmallest],
+          ["Uneven weight / dynamic mass?", d.dynamicMass], ["2D and 3D files included", d.includeFiles],
+          ["Control type", d.controlType], ["New/Updated designs?", d.newDesign]
+        ]],
+        ["JOB SPECIFICS", [
+          ["Partners", d.partners], ["Commissioning personnel", d.commissioning],
+          ["Deployment schedule", d.deployment],
+          //["First 2 segments of all standard models or Copy/Paste BOM", d.stdSegments],
+          ["Non-standard models", d.nonStandard], ["Control specifics", d.controlHand],
+          ["Detailed description of operation", d.detailedOp],
+          ["Top of Roller (TOR)", d.torNotes]
+        ]]
+      ];
+      const lines = [];
+      sections.forEach((sec, si)=>{
+        lines.push(sec[0]);
+        sec[1].forEach(([k,v])=> lines.push(v?.trim() ? `${k}: ${v.trim()}` : `${k}:`));
+        if (si < sections.length-1) lines.push("");
+      });
+      return lines.join("\n");
+    }
+
+    // ===== Clipboard (robust) =====
+    async function copyText(text){
+      if (!text.trim()){ setStatus("Nothing to copy."); return; }
+      try{
+        if (window.isSecureContext && navigator.clipboard?.writeText){
+          await navigator.clipboard.writeText(text); setStatus("Copied!"); return;
+        }
+      }catch(_){}
+      try{
+        const ta=document.createElement("textarea");
+        ta.value=text; ta.setAttribute("readonly",""); ta.style.position="fixed"; ta.style.top="-9999px"; ta.style.opacity="0";
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        const ok=document.execCommand("copy"); document.body.removeChild(ta);
+        setStatus(ok ? "Copied!" : "Clipboard blocked.");
+      }catch(_){ setStatus(window.isSecureContext ? "Clipboard blocked." : "Clipboard requires HTTPS."); }
+    }
+
+    // ===== XLSX export (no preview dependency) =====
+    function downloadXLSX(){
+      const fd = new FormData(form);
+      const d = Object.fromEntries(fd.entries());
+      const rows = [
+        ["JOB DATA",""], 
+        ["Job number", d.jobNumber], ["Integrator / End user", d.integrator], ["Nickname", d.nickname],
+        ["Sales person", d.salesperson], ["Job site location", d.siteLocation],
+        ["Ship date", d.shipDate], ["Installation date", d.installDate], ["Go-live date", d.goLiveDate],
+        ["Project manager", d.projectManager], ["Side covers", d.sideCovers], ["Rate", d.rate],
+        ["Package dims (largest)", d.pkgLargest], ["Package dims (smallest)", d.pkgSmallest],
+        ["Uneven weight / dynamic mass?", d.dynamicMass], ["2D and 3D files included", d.includeFiles],
+        ["Control type", d.controlType], ["New/Updated designs?", d.newDesign],
+        [], ["JOB SPECIFICS",""],
+        ["Partners", d.partners], ["Commissioning personnel", d.commissioning], ["Deployment schedule", d.deployment],
+        // ["First 2 segments of all standard models or Copy/Paste BOM", d.stdSegments],
+        ["Non-standard models", d.nonStandard], ["Control specifics", d.controlHand],
+        ["Detailed description of operation", d.detailedOp],
+        ["Top of Roller (TOR)", d.torNotes],
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:36},{wch:100}];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Project Scope');
+      XLSX.writeFile(wb, filenameBase() + '.xlsx');
+      setStatus("XLSX downloaded.");
+    }
+
+    // ===== Bind actions =====
+    document.getElementById('btnCopy').addEventListener('click', (e)=>{ e.preventDefault(); copyText(buildSummaryText()); });
+    document.getElementById('btnXLSX').addEventListener('click', (e)=>{ e.preventDefault(); downloadXLSX(); });
+  </script>
+</body>
+</html>
