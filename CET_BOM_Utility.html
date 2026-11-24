@@ -7,6 +7,8 @@
 
   <!-- SheetJS for xlsx read/write -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <!-- Master catalog (Sales Model lookup). Must sit in the same folder as this page. -->
+  <script src="catalog_data.js"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -175,6 +177,20 @@
 
     /* ── Dropdown button ── */
     .dropdown { position: relative; display: inline-block; }
+    /* ── Part number setup ── */
+    #pn-panel { display: none; }
+    .pn-grid { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+    .pn-field { display:flex; flex-direction:column; gap:4px; min-width:150px; }
+    .pn-field label { font-size:0.72rem; font-weight:800; text-transform:uppercase; color:#006600; letter-spacing:.03em; }
+    .pn-field select { padding:6px 8px; border:1px solid #c8e6c9; border-radius:6px; font-size:0.88rem; }
+    .pn-field select.need { border-color:#e65100; background:#fff3e0; }
+    .pn-sub { font-size:0.85rem; font-weight:700; color:#333; margin:10px 0 6px; }
+    .pn-lines { border-collapse:collapse; font-size:0.82rem; }
+    .pn-lines th { text-align:left; background:#e8f5e9; color:#1b5e20; padding:5px 10px; }
+    .pn-lines td { padding:4px 10px; border-bottom:1px solid #eee; }
+    .pn-lines select { padding:3px 6px; border:1px solid #c8e6c9; border-radius:5px; }
+    .pn-lines select.need { border-color:#e65100; background:#fff3e0; }
+    .pn-hint { font-size:0.78rem; color:#777; margin-top:6px; }
     .dropdown-menu {
       display: none;
       position: absolute;
@@ -434,6 +450,14 @@
         <div id="status-bar"></div>
       </div>
 
+      <!-- ── Pane 1b: Part Number Setup ── -->
+      <div class="panel" id="pn-panel">
+        <h2>🔢 Part Number Setup</h2>
+        <div class="pn-grid" id="pn-job"></div>
+        <div id="pn-line-opts"></div>
+        <div class="pn-hint">Orange = needs a selection. Engineering Model, Sales Model and List Price columns update in the output below.</div>
+      </div>
+
       <!-- ── Pane 2: Output ── -->
       <div class="panel" id="output-panel">
         <h2>📋 Condensed BOM Output</h2>
@@ -507,6 +531,311 @@
   let totalZones      = 0;
   let totalLinearFt   = 0;
   let totalDriveCards = 0;
+
+
+  // ═══════════════════════════════════════════════════════════════
+  //  MASTER CATALOG (Sales Model lookup — data in catalog_data.js)
+  // ═══════════════════════════════════════════════════════════════
+  const CATALOG_BY_ENG = new Map();
+  (function loadCatalog() {
+    const raw = window.MODO_CATALOG_RAW || '';
+    if (!raw) { console.warn('catalog_data.js not loaded — Sales Models unavailable'); return; }
+    raw.split('\n').forEach(line => {
+      const [eng, sales, price] = line.split('|');
+      if (eng) CATALOG_BY_ENG.set(eng, { sales, price: Number(price) || null });
+    });
+  })();
+  function catalogFor(eng) { return eng ? CATALOG_BY_ENG.get(eng.toUpperCase()) || null : null; }
+
+
+  // ═══════════════════════════════════════════════════════════════
+  //  GENERATOR PRICE TABLES (copied from BOM_Generator_Unified) —
+  //  used only when a number is NOT in the master catalog
+  // ═══════════════════════════════════════════════════════════════
+  const STRAIGHTS_PRICE = [
+    {bf:'15"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4450,rsh:4750,c2:5100,c2rsh:5400,polyv:4750,polyvc2:5400,fwb:5450,fwbrsh:5750},
+    {bf:'15"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2400,rsh:2550,c2:2750,c2rsh:2900,polyv:2550,polyvc2:2900,fwb:2900,fwbrsh:3050},
+    {bf:'15"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1400,rsh:1500,c2:1600,c2rsh:1650,polyv:1500,polyvc2:1650,fwb:1650,fwbrsh:1750},
+    {bf:'15"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:4900,rsh:5200,c2:5550,c2rsh:5850,polyv:5200,polyvc2:5850,fwb:5900,fwbrsh:6200},
+    {bf:'15"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2550,rsh:2700,c2:2900,c2rsh:3050,polyv:2700,polyvc2:3050,fwb:3050,fwbrsh:3200},
+    {bf:'15"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1550,rsh:1650,c2:1750,c2rsh:1800,polyv:1650,polyvc2:1800,fwb:1800,fwbrsh:1900},
+    {bf:'15"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4250,rsh:4550,c2:4900,c2rsh:5200,polyv:4550,polyvc2:5200,fwb:5250,fwbrsh:5550},
+    {bf:'15"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2200,rsh:2350,c2:2550,c2rsh:2700,polyv:2350,polyvc2:2700,fwb:2700,fwbrsh:2850},
+    {bf:'15"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1350,rsh:1450,c2:1550,c2rsh:1600,polyv:1450,polyvc2:1600,fwb:1600,fwbrsh:1700},
+    {bf:'15"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6200,rsh:6650,c2:7150,c2rsh:7600,polyv:6650,polyvc2:7600,fwb:7700,fwbrsh:8150},
+    {bf:'18"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4500,rsh:4800,c2:5150,c2rsh:5450,polyv:4800,polyvc2:5450,fwb:5500,fwbrsh:5800},
+    {bf:'18"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2450,rsh:2600,c2:2800,c2rsh:2950,polyv:2600,polyvc2:2950,fwb:2950,fwbrsh:3100},
+    {bf:'18"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+    {bf:'18"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:4950,rsh:5250,c2:5600,c2rsh:5900,polyv:5250,polyvc2:5900,fwb:5950,fwbrsh:6250},
+    {bf:'18"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2600,rsh:2750,c2:2950,c2rsh:3100,polyv:2750,polyvc2:3100,fwb:3100,fwbrsh:3250},
+    {bf:'18"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1600,rsh:1700,c2:1800,c2rsh:1850,polyv:1700,polyvc2:1850,fwb:1850,fwbrsh:1950},
+    {bf:'18"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4300,rsh:4600,c2:4950,c2rsh:5250,polyv:4600,polyvc2:5250,fwb:5300,fwbrsh:5600},
+    {bf:'18"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2250,rsh:2400,c2:2600,c2rsh:2750,polyv:2400,polyvc2:2750,fwb:2750,fwbrsh:2900},
+    {bf:'18"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1400,rsh:1500,c2:1600,c2rsh:1650,polyv:1500,polyvc2:1650,fwb:1650,fwbrsh:1750},
+    {bf:'18"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6250,rsh:6700,c2:7200,c2rsh:7650,polyv:6700,polyvc2:7650,fwb:7750,fwbrsh:8200},
+    {bf:'21"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4500,rsh:4800,c2:5150,c2rsh:5450,polyv:4800,polyvc2:5450,fwb:5500,fwbrsh:5800},
+    {bf:'21"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2450,rsh:2600,c2:2800,c2rsh:2950,polyv:2600,polyvc2:2950,fwb:2950,fwbrsh:3100},
+    {bf:'21"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+    {bf:'21"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:4950,rsh:5250,c2:5600,c2rsh:5900,polyv:5250,polyvc2:5900,fwb:5950,fwbrsh:6250},
+    {bf:'21"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2600,rsh:2750,c2:2950,c2rsh:3100,polyv:2750,polyvc2:3100,fwb:3100,fwbrsh:3250},
+    {bf:'21"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1600,rsh:1700,c2:1800,c2rsh:1850,polyv:1700,polyvc2:1850,fwb:1850,fwbrsh:1950},
+    {bf:'21"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4350,rsh:4650,c2:5000,c2rsh:5300,polyv:4650,polyvc2:5300,fwb:5350,fwbrsh:5650},
+    {bf:'21"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2250,rsh:2400,c2:2600,c2rsh:2750,polyv:2400,polyvc2:2750,fwb:2750,fwbrsh:2900},
+    {bf:'21"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1400,rsh:1500,c2:1600,c2rsh:1650,polyv:1500,polyvc2:1650,fwb:1650,fwbrsh:1750},
+    {bf:'21"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6300,rsh:6750,c2:7300,c2rsh:7750,polyv:6750,polyvc2:7750,fwb:7800,fwbrsh:8250},
+    {bf:'24"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4550,rsh:4850,c2:5200,c2rsh:5500,polyv:4850,polyvc2:5500,fwb:5550,fwbrsh:5850},
+    {bf:'24"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2450,rsh:2600,c2:2800,c2rsh:2950,polyv:2600,polyvc2:2950,fwb:2950,fwbrsh:3100},
+    {bf:'24"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+    {bf:'24"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:5000,rsh:5300,c2:5650,c2rsh:5950,polyv:5300,polyvc2:5950,fwb:6000,fwbrsh:6300},
+    {bf:'24"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2600,rsh:2750,c2:2950,c2rsh:3100,polyv:2750,polyvc2:3100,fwb:3100,fwbrsh:3250},
+    {bf:'24"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1600,rsh:1700,c2:1800,c2rsh:1850,polyv:1700,polyvc2:1850,fwb:1850,fwbrsh:1950},
+    {bf:'24"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4350,rsh:4650,c2:5000,c2rsh:5300,polyv:4650,polyvc2:5300,fwb:5350,fwbrsh:5650},
+    {bf:'24"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2250,rsh:2400,c2:2600,c2rsh:2750,polyv:2400,polyvc2:2750,fwb:2750,fwbrsh:2900},
+    {bf:'24"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1400,rsh:1500,c2:1600,c2rsh:1650,polyv:1500,polyvc2:1650,fwb:1650,fwbrsh:1750},
+    {bf:'24"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6350,rsh:6800,c2:7350,c2rsh:7800,polyv:6800,polyvc2:7800,fwb:7850,fwbrsh:8300},
+    {bf:'27"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4550,rsh:4850,c2:5200,c2rsh:5500,polyv:4850,polyvc2:5500,fwb:5550,fwbrsh:5850},
+    {bf:'27"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2450,rsh:2600,c2:2800,c2rsh:2950,polyv:2600,polyvc2:2950,fwb:2950,fwbrsh:3100},
+    {bf:'27"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+    {bf:'27"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:5000,rsh:5300,c2:5650,c2rsh:5950,polyv:5300,polyvc2:5950,fwb:6000,fwbrsh:6300},
+    {bf:'27"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2600,rsh:2750,c2:2950,c2rsh:3100,polyv:2750,polyvc2:3100,fwb:3100,fwbrsh:3250},
+    {bf:'27"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1600,rsh:1700,c2:1800,c2rsh:1850,polyv:1700,polyvc2:1850,fwb:1850,fwbrsh:1950},
+    {bf:'27"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4400,rsh:4700,c2:5050,c2rsh:5350,polyv:4700,polyvc2:5350,fwb:5400,fwbrsh:5700},
+    {bf:'27"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2300,rsh:2450,c2:2650,c2rsh:2800,polyv:2450,polyvc2:2800,fwb:2800,fwbrsh:2950},
+    {bf:'27"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1400,rsh:1500,c2:1600,c2rsh:1650,polyv:1500,polyvc2:1650,fwb:1650,fwbrsh:1750},
+    {bf:'27"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6350,rsh:6800,c2:7350,c2rsh:7800,polyv:6800,polyvc2:7800,fwb:7850,fwbrsh:8300},
+    {bf:'30"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4600,rsh:4900,c2:5250,c2rsh:5550,polyv:4900,polyvc2:5550,fwb:5600,fwbrsh:5900},
+    {bf:'30"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2500,rsh:2650,c2:2850,c2rsh:3000,polyv:2650,polyvc2:3000,fwb:3000,fwbrsh:3150},
+    {bf:'30"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+    {bf:'30"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:5050,rsh:5350,c2:5700,c2rsh:6000,polyv:5350,polyvc2:6000,fwb:6050,fwbrsh:6350},
+    {bf:'30"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2650,rsh:2800,c2:3000,c2rsh:3150,polyv:2800,polyvc2:3150,fwb:3150,fwbrsh:3300},
+    {bf:'30"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1600,rsh:1700,c2:1800,c2rsh:1850,polyv:1700,polyvc2:1850,fwb:1850,fwbrsh:1950},
+    {bf:'30"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4400,rsh:4700,c2:5050,c2rsh:5350,polyv:4700,polyvc2:5350,fwb:5400,fwbrsh:5700},
+    {bf:'30"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2300,rsh:2450,c2:2650,c2rsh:2800,polyv:2450,polyvc2:2800,fwb:2800,fwbrsh:2950},
+    {bf:'30"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+    {bf:'30"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6400,rsh:6850,c2:7400,c2rsh:7850,polyv:6850,polyvc2:7850,fwb:7900,fwbrsh:8350},
+    {bf:'33"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4600,rsh:4900,c2:5250,c2rsh:5550,polyv:4900,polyvc2:5550,fwb:5600,fwbrsh:5900},
+    {bf:'33"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2500,rsh:2650,c2:2850,c2rsh:3000,polyv:2650,polyvc2:3000,fwb:3000,fwbrsh:3150},
+    {bf:'33"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1500,rsh:1600,c2:1700,c2rsh:1750,polyv:1600,polyvc2:1750,fwb:1750,fwbrsh:1850},
+    {bf:'33"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:5050,rsh:5350,c2:5700,c2rsh:6000,polyv:5350,polyvc2:6000,fwb:6050,fwbrsh:6350},
+    {bf:'33"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2650,rsh:2800,c2:3000,c2rsh:3150,polyv:2800,polyvc2:3150,fwb:3150,fwbrsh:3300},
+    {bf:'33"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1650,rsh:1750,c2:1850,c2rsh:1900,polyv:1750,polyvc2:1900,fwb:1900,fwbrsh:2000},
+    {bf:'33"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4450,rsh:4750,c2:5100,c2rsh:5400,polyv:4750,polyvc2:5400,fwb:5450,fwbrsh:5750},
+    {bf:'33"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2350,rsh:2500,c2:2700,c2rsh:2850,polyv:2500,polyvc2:2850,fwb:2850,fwbrsh:3000},
+    {bf:'33"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1450,rsh:1550,c2:1650,c2rsh:1700,polyv:1550,polyvc2:1700,fwb:1700,fwbrsh:1800},
+    {bf:'33"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6450,rsh:6900,c2:7450,c2rsh:7900,polyv:6900,polyvc2:7900,fwb:7950,fwbrsh:8400},
+    {bf:'36"BF',config:'120" 4-Zone Bed (30" Zone)',rail:'120"',zones:4,zoneLen:'30" zone',rsl:4650,rsh:4950,c2:5300,c2rsh:5600,polyv:4950,polyvc2:5600,fwb:5650,fwbrsh:5950},
+    {bf:'36"BF',config:'60" 2-Zone Bed (30" Zone)',rail:'60"',zones:2,zoneLen:'30" zone',rsl:2550,rsh:2700,c2:2900,c2rsh:3050,polyv:2700,polyvc2:3050,fwb:3050,fwbrsh:3200},
+    {bf:'36"BF',config:'30" 1-Zone Bed (30" Zone)',rail:'30"',zones:1,zoneLen:'30" zone',rsl:1500,rsh:1600,c2:1700,c2rsh:1750,polyv:1600,polyvc2:1750,fwb:1750,fwbrsh:1850},
+    {bf:'36"BF',config:'144" 4-Zone Bed (36" Zone)',rail:'144"',zones:4,zoneLen:'36" zone',rsl:5100,rsh:5400,c2:5750,c2rsh:6050,polyv:5400,polyvc2:6050,fwb:6100,fwbrsh:6400},
+    {bf:'36"BF',config:'72" 2-Zone Bed (36" Zone)',rail:'72"',zones:2,zoneLen:'36" zone',rsl:2700,rsh:2850,c2:3050,c2rsh:3200,polyv:2850,polyvc2:3200,fwb:3200,fwbrsh:3350},
+    {bf:'36"BF',config:'36" 1-Zone Bed (36" Zone)',rail:'36"',zones:1,zoneLen:'36" zone',rsl:1650,rsh:1750,c2:1850,c2rsh:1900,polyv:1750,polyvc2:1900,fwb:1900,fwbrsh:2000},
+    {bf:'36"BF',config:'96" 4-Zone Bed (24" Zone)',rail:'96"',zones:4,zoneLen:'24" zone',rsl:4500,rsh:4800,c2:5150,c2rsh:5450,polyv:4800,polyvc2:5450,fwb:5500,fwbrsh:5800},
+    {bf:'36"BF',config:'48" 2-Zone Bed (24" Zone)',rail:'48"',zones:2,zoneLen:'24" zone',rsl:2350,rsh:2500,c2:2700,c2rsh:2850,polyv:2500,polyvc2:2850,fwb:2850,fwbrsh:3000},
+    {bf:'36"BF',config:'24" 1-Zone Bed (24" Zone)',rail:'24"',zones:1,zoneLen:'24" zone',rsl:1500,rsh:1600,c2:1700,c2rsh:1750,polyv:1600,polyvc2:1750,fwb:1750,fwbrsh:1850},
+    {bf:'36"BF',config:'144" 6-Zone Bed (24" Zone)',rail:'144"',zones:6,zoneLen:'24" zone',rsl:6500,rsh:6950,c2:7500,c2rsh:7950,polyv:6950,polyvc2:7950,fwb:8000,fwbrsh:8450},
+  ];
+  
+  const CURVES_PRICE = [
+    {desc:'90-Degree Tapered Curve',angle:'90',rsl:3500,rsh:3650,c2:3850,c2rsh:4000},
+    {desc:'60-Degree Tapered Curve',angle:'60',rsl:3000,rsh:3150,c2:3350,c2rsh:3500},
+    {desc:'45-Degree Tapered Curve',angle:'45',rsl:2500,rsh:2600,c2:2700,c2rsh:2750},
+    {desc:'30-Degree Tapered Curve',angle:'30',rsl:1750,rsh:1850,c2:1950,c2rsh:2000},
+  ];
+  
+  const MODOX_PRICE = [
+    {section:'24" and 30" Zones',model:'ModoX90 Transfer',bf15:11500,bf18:11750,bf21:12000,bf24:12250,bf27:12500},
+    {section:'24" and 30" Zones',model:'ModoX60',bf15:15500,bf18:15750,bf21:16000,bf24:16250,bf27:16500},
+    {section:'24" and 30" Zones',model:'ModoX30',bf15:16000,bf18:16250,bf21:16500,bf24:16750,bf27:17000},
+    {section:'36" Zone',model:'ModoX90 Transfer',bf15:12500,bf18:12750,bf21:13000,bf24:13250,bf27:13500},
+    {section:'36" Zone',model:'ModoX60',bf15:16500,bf18:16750,bf21:17000,bf24:17250,bf27:17500},
+    {section:'36" Zone',model:'ModoX30',bf15:17000,bf18:17250,bf21:17500,bf24:17750,bf27:18000},
+  ];
+  
+  const GATES_PRICE = [
+    {model:'Gate 36-24',bf15:7000,bf18:7125,bf21:7250,bf24:7375,bf27:7500,bf30:7625,bf33:7750,bf36:7875},
+    {model:'Gate 48-12',bf15:8000,bf18:8125,bf21:8250,bf24:8375,bf27:8500,bf30:8625,bf33:8750,bf36:8875},
+  ];
+
+  function generatorPrice(eng) {
+    if (!eng) return null;
+    let m;
+    // Straight: FH120P27C3-4TG030-RH102STD
+    if ((m = eng.match(/^(F[LH]|S[LH]|HD)(\d{3})([PG])(\d{2})C(\d)-(\d)([A-Z]{2})(\d{3})-/))) {
+      const [, rail, len, power, bf, rcd, zones, rt] = m;
+      if (power === 'G' || rt === 'GR') return null;
+      const row = STRAIGHTS_PRICE.find(r => r.bf === parseInt(bf) + '"BF' && r.rail === parseInt(len) + '"' && r.zones === parseInt(zones));
+      if (!row) return null;
+      let col = rt === 'PV' ? 'polyv' : (rt === 'BI' || rt === 'BD') ? 'fwb' : rcd === '2' ? 'c2' : 'rsl';
+      if (rail[1] === 'H') col = { rsl:'rsh', c2:'c2rsh', polyv:'polyvc2', fwb:'fwbrsh' }[col];
+      return row[col] || row.rsl || null;
+    }
+    // Curve: TH9027C3-2TG036-RH102STD
+    if ((m = eng.match(/^[HT]([LH])(\d{2})\d{2}C(\d)-/))) {
+      const [, set, ang, rcd] = m;
+      const row = CURVES_PRICE.find(r => r.angle === String(parseInt(ang)));
+      if (!row) return null;
+      return rcd === '2' ? (set === 'H' ? row.c2rsh : row.c2) : (set === 'H' ? row.rsh : row.rsl);
+    }
+    // ModoX30/60 divert: DW27R030C3-TG30L102STD
+    if ((m = eng.match(/^(DW|DS)(\d{2})[LRB](\d{3})C\d-(?:TG|PV)?(\d{2})/))) {
+      const [, mod, bf, zl, ang] = m;
+      const section = parseInt(zl) === 36 ? '36" Zone' : '24" and 30" Zones';
+      const row = MODOX_PRICE.find(r => r.model === (ang === '60' ? 'ModoX60' : 'ModoX30') && r.section === section);
+      const p = row && row['bf' + bf];
+      return p ? (mod === 'DS' ? Math.round(p * 1.30 / 50) * 50 : p) : null;
+    }
+    // ModoX90 transfer: MX2730B-R102STD
+    if ((m = eng.match(/^MX(\d{2})(\d{2})[LRB]-/))) {
+      const [, bf, zl] = m;
+      const section = parseInt(zl) === 36 ? '36" Zone' : '24" and 30" Zones';
+      const row = MODOX_PRICE.find(r => r.model === 'ModoX90 Transfer' && r.section === section);
+      return (row && row['bf' + bf]) || null;
+    }
+    return null;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  PART NUMBER GENERATION
+  // ═══════════════════════════════════════════════════════════════
+  let RAW = null;
+  const PN_HEADERS = ['Engineering Model', 'Sales Model', 'List Price', 'PN Note'];
+  const PN_JOB = { rail:'', centers:'', roller:'', hand:'', brand:'1', proto:'02' };
+  const LINE_OPT = {};          // CET line # → { belt:'BI'|'BD', dir:'L'|'R'|'B' }
+  let DVTR_ZONE = 30;           // zone length for ModoX, taken from MODO-DV-TR-BELTS
+  const STD_LENGTHS = [24, 30, 36, 48, 60, 72, 96, 120, 144];
+
+  const PN_JOB_FIELDS = [
+    { key:'rail',    label:'Roller Set',   opts:[['FL','Low (FL)'],['FH','High (FH)']] },
+    { key:'centers', label:'Centers',      opts:[['C2','2"'],['C3','3"']] },
+    { key:'roller',  label:'Roller Type',  opts:[['TG','Two Groove (O-Band)'],['PV','Poly V']] },
+    { key:'hand',    label:'Control Hand', opts:[['LH','Left Hand'],['RH','Right Hand']] },
+    { key:'brand',   label:'Roller Brand', opts:[['1','Interroll'],['2','Pulse'],['3','Itoh Denki'],['4','Modoroller']] },
+    { key:'proto',   label:'Control Protocol', opts:[['01','AS-i 3.0'],['02','PNF ZPA'],['03','ModoLink Full Control'],['04','Numina'],['05','Pulse Synergy'],['06','Pulse AI-3'],['07','Interroll Multi Control'],['08','Interroll 2248']] },
+  ];
+
+  function rawCol(row, name) {
+    const i = RAW.rawHeaders.findIndex(h => h.toLowerCase() === name);
+    if (i < 0) return '';
+    const v = row[i];
+    return (v === null || v === undefined) ? '' : String(v).trim();
+  }
+  function numIn(v) { const n = parseFloat(String(v || '').replace(/["'°]/g, '')); return isNaN(n) ? null : n; }
+  function p3(n) { return String(Math.round(n)).padStart(3, '0'); }
+  function partOf(row) { return rawCol(row, 'part number').toUpperCase(); }
+  function lineNo(row) { return String(row[0]); }
+
+  function prepareSections() {
+    Object.keys(LINE_OPT).forEach(k => delete LINE_OPT[k]);
+    const dv = RAW.dataRows.find(r => partOf(r) === 'MODO-DV-TR-BELTS');
+    DVTR_ZONE = dv ? (numIn(rawCol(dv, 'length')) || 30) : 30;
+  }
+
+  function computePartNumber(row) {
+    const part = partOf(row);
+    if (!part.startsWith('MODO-')) return {};
+    const J = PN_JOB, bf = numIn(rawCol(row, 'bf'));
+    const bfS = bf ? String(Math.round(bf)).padStart(2, '0') : '??';
+    const hand1 = J.hand ? J.hand[0] : '';
+    const ctl = `${J.brand}${J.proto}STD`;
+    const need = keys => {
+      const miss = keys.filter(k => !J[k]).map(k => PN_JOB_FIELDS.find(f => f.key === k).label);
+      return miss.length ? { note: 'Select ' + miss.join(', ') + ' above' } : null;
+    };
+    const opt = LINE_OPT[lineNo(row)] || {};
+
+    if (part === 'MODO-ROLLER-FLIPRAIL') {
+      const n = need(['rail','centers','roller','hand']); if (n) return n;
+      const len = numIn(rawCol(row, 'length')), zl = numIn(rawCol(row, 'zone length')), zq = numIn(rawCol(row, 'zone qty')) || 1;
+      return { eng: `${J.rail}${p3(len)}P${bfS}${J.centers}-${zq}${J.roller}${p3(zl)}-${J.hand}${ctl}` };
+    }
+    if (part === 'MODO-FWB-FLIPRAIL') {
+      const n = need(['rail','hand']); if (n) return n;
+      if (!opt.belt) return { note: `Select belt type (BI/BD) for line #${lineNo(row)} above` };
+      const len = numIn(rawCol(row, 'length')), zl = numIn(rawCol(row, 'zone length')), zq = numIn(rawCol(row, 'zone qty')) || 1;
+      return { eng: `${J.rail}${p3(len)}P${bfS}C6-${zq}${opt.belt}${p3(zl)}-${J.hand}${ctl}` };
+    }
+    if (part === 'MODO-GRAVITY') {
+      const n = need(['rail','centers']); if (n) return n;
+      const len = numIn(rawCol(row, 'length'));
+      const std = STD_LENGTHS.find(L => L >= len - 0.01);
+      if (!std) return { note: `CUSTOM — ${len}" is longer than 144" (no catalog length)` };
+      const note = Math.abs(std - len) > 0.01 ? `Rounded up from ${len}" to ${std}"` : '';
+      return { eng: `${J.rail}${p3(std)}G${bfS}${J.centers}-0GR000-NC000STD`, note };
+    }
+    if (part === 'MODO-MDR-CURVE') {
+      const n = need(['rail','hand']); if (n) return n;
+      const ang = Math.round(numIn(rawCol(row, 'arc angle')) || 0);
+      const zones = ang === 90 ? 2 : 1;
+      return { eng: `T${J.rail[1]}${String(ang).padStart(2,'0')}${bfS}C3-${zones}TG036-${J.hand}${ctl}`,
+               note: 'Curves: 3" centers, Two Groove' };
+    }
+    if (/^MODO-X-(30|60)/.test(part)) {
+      if (!opt.dir) return { note: `Select discharge side for line #${lineNo(row)} above` };
+      const ang = part.includes('60') ? '60' : '30', rt = ang === '60' ? 'PV' : 'TG';
+      const xHand = opt.dir === 'R' ? 'L' : 'R';   // catalog: controls opposite the discharge side
+      return { eng: `DW${bfS}${opt.dir}${p3(DVTR_ZONE)}C3-${rt}${ang}${xHand}${ctl}`,
+               note: `ModoX${ang} — includes MODO-DV-TR-BELTS (${DVTR_ZONE}" zone); controls opposite discharge` };
+    }
+    if (/^MODO-X-90/.test(part)) {
+      const n = need(['hand']); if (n) return n;
+      if (!opt.dir) return { note: `Select discharge side for line #${lineNo(row)} above` };
+      return { eng: `MX${bfS}${String(Math.round(DVTR_ZONE)).padStart(2,'0')}${opt.dir}-${hand1}${ctl}`,
+               note: `ModoX90 — includes MODO-DV-TR-BELTS (${DVTR_ZONE}" zone)` };
+    }
+    if (part === 'MODO-DV-TR-BELTS') return { salesOnly: '', note: 'Part of ModoX — no separate number' };
+    if (part === 'MODO-BELT-SPUR')   return { note: 'CUSTOM — no catalog number' };
+    return {};
+  }
+
+  function renderPnPanel() {
+    const jobEl = document.getElementById('pn-job');
+    jobEl.innerHTML = PN_JOB_FIELDS.map(f => `
+      <div class="pn-field"><label>${f.label}</label>
+        <select data-key="${f.key}" class="${PN_JOB[f.key] ? '' : 'need'}" onchange="onPnJobChange(this)">
+          <option value="">— Select —</option>
+          ${f.opts.map(([v, t]) => `<option value="${v}" ${PN_JOB[f.key] === v ? 'selected' : ''}>${t}</option>`).join('')}
+        </select></div>`).join('');
+
+    const belts = RAW.dataRows.filter(r => partOf(r) === 'MODO-FWB-FLIPRAIL');
+    const xs    = RAW.dataRows.filter(r => /^MODO-X-/.test(partOf(r)));
+    let html = '';
+    if (belts.length) {
+      html += `<div class="pn-sub">Full Width Belt sections — choose Incline or Decline/Flat for each</div>
+        <table class="pn-lines"><tr><th>Line #</th><th>Length</th><th>Zones</th><th>BF</th><th>Belt Type</th></tr>` +
+        belts.map(r => { const k = lineNo(r), v = (LINE_OPT[k] || {}).belt || ''; return `<tr>
+          <td>${k}</td><td>${rawCol(r,'length')}</td><td>${rawCol(r,'zone qty')}</td><td>${rawCol(r,'bf')}</td>
+          <td><select class="${v ? '' : 'need'}" onchange="onLineOpt('${k}','belt',this)">
+            <option value="">— Select —</option>
+            <option value="BI" ${v==='BI'?'selected':''}>BI — Belted Incline</option>
+            <option value="BD" ${v==='BD'?'selected':''}>BD — Belted Decline/Flat</option>
+          </select></td></tr>`; }).join('') + '</table>';
+    }
+    if (xs.length) {
+      html += `<div class="pn-sub">ModoX units — choose discharge side for each</div>
+        <table class="pn-lines"><tr><th>Line #</th><th>Part</th><th>BF</th><th>Discharge</th></tr>` +
+        xs.map(r => { const k = lineNo(r), v = (LINE_OPT[k] || {}).dir || '', is90 = /X-90/.test(partOf(r)); return `<tr>
+          <td>${k}</td><td>${partOf(r)}</td><td>${rawCol(r,'bf')}</td>
+          <td><select class="${v ? '' : 'need'}" onchange="onLineOpt('${k}','dir',this)">
+            <option value="">— Select —</option>
+            <option value="L" ${v==='L'?'selected':''}>Left</option>
+            <option value="R" ${v==='R'?'selected':''}>Right</option>
+            ${is90 ? `<option value="B" ${v==='B'?'selected':''}>Bi-Directional</option>` : ''}
+          </select></td></tr>`; }).join('') + '</table>';
+    }
+    document.getElementById('pn-line-opts').innerHTML = html;
+    document.getElementById('pn-panel').style.display = 'block';
+  }
+  function onPnJobChange(sel) {
+    PN_JOB[sel.dataset.key] = sel.value;
+    sel.classList.toggle('need', !sel.value);
+    rebuild();
+  }
+  function onLineOpt(line, key, sel) {
+    LINE_OPT[line] = LINE_OPT[line] || {};
+    LINE_OPT[line][key] = sel.value;
+    sel.classList.toggle('need', !sel.value);
+    rebuild();
+  }
 
   // ═══════════════════════════════════════════════════════════════
   //  DRAG & DROP
@@ -582,118 +911,11 @@
         }
         if (qtyColIdx === -1) qtyColIdx = colCount - 1;
 
-        // Find columns that have at least one non-null value in data rows
-        const colHasData = new Array(colCount).fill(false);
-        dataRows.forEach(row => {
-          for (let c = 0; c < colCount; c++) {
-            if (row[c] !== null && row[c] !== undefined && row[c] !== '') colHasData[c] = true;
-          }
-        });
-
-        // Build allHeaders / allColIndexMap: skip col A (0), skip qty col, skip empty cols
-        allColIndexMap = [];
-        allHeaders     = [];
-        for (let c = 0; c < colCount; c++) {
-          if (c === 0) continue;
-          if (c === qtyColIdx) continue;
-          if (!colHasData[c]) continue;
-          allColIndexMap.push(c);
-          allHeaders.push(rawHeaders[c] || `Col ${c + 1}`);
-        }
-
-        // Identify special column indices within allHeaders
-        COL_ELEVATION   = allHeaders.findIndex(h => h.toLowerCase() === 'elevation');
-        COL_HEIGHT      = allHeaders.findIndex(h => h.toLowerCase() === 'height');
-        COL_CATEGORY    = allHeaders.findIndex(h => h.toLowerCase() === 'category');
-        COL_ZONE_LENGTH = allHeaders.findIndex(h => h.toLowerCase() === 'zone length');
-        COL_ZONE_QTY    = allHeaders.findIndex(h => h.toLowerCase() === 'zone qty');
-        COL_ARC_ANGLE   = allHeaders.findIndex(h => h.toLowerCase() === 'arc angle');
-        COL_BF          = allHeaders.findIndex(h => h.toLowerCase() === 'bf');
-        COL_LENGTH      = allHeaders.findIndex(h => h.toLowerCase() === 'length');
-
-        // ── Helper: parse numeric value from a cell string ──
-        function parseCellNum(v) {
-          if (v === null || v === undefined || v === '') return null;
-          const n = parseFloat(String(v).replace(/['"°]/g, '').trim());
-          return isNaN(n) ? null : n;
-        }
-
-        // ── Build COMPREHENSIVE dedup map ──
-        // Key = ALL visible columns (including Height and Elevation)
-        // Items at different heights or elevations remain as separate rows
-        const compMap = new Map();
-        dataRows.forEach(row => {
-          const cells = allColIndexMap.map(c => {
-            const v = row[c];
-            return (v === null || v === undefined) ? '' : String(v).trim();
-          });
-          const key = cells.join('\x00');
-          const rowQty = Number(row[qtyColIdx]) || 1;
-          if (compMap.has(key)) {
-            compMap.get(key).qty += rowQty;
-          } else {
-            compMap.set(key, { cells: cells.slice(), qty: rowQty });
-          }
-        });
-        comprehensiveRows = Array.from(compMap.values());
-
-        // ── Build CONDENSED dedup map ──
-        // Key = all visible columns EXCEPT Height and Elevation
-        // Height and Elevation are tracked as min/max ranges
-        const condMap = new Map();
-        dataRows.forEach(row => {
-          const cells = allColIndexMap.map(c => {
-            const v = row[c];
-            return (v === null || v === undefined) ? '' : String(v).trim();
-          });
-          const keyParts = cells.filter((_, i) => i !== COL_ELEVATION && i !== COL_HEIGHT);
-          const key = keyParts.join('\x00');
-          const rowQty = Number(row[qtyColIdx]) || 1;
-          const elevVal  = COL_ELEVATION >= 0 ? parseCellNum(cells[COL_ELEVATION])  : null;
-          const heightVal = COL_HEIGHT   >= 0 ? parseCellNum(cells[COL_HEIGHT])     : null;
-          if (condMap.has(key)) {
-            const entry = condMap.get(key);
-            entry.qty += rowQty;
-            if (elevVal  !== null) { if (elevVal  < entry.elevMin)   entry.elevMin   = elevVal;   if (elevVal  > entry.elevMax)   entry.elevMax   = elevVal;   }
-            if (heightVal !== null) { if (heightVal < entry.heightMin) entry.heightMin = heightVal; if (heightVal > entry.heightMax) entry.heightMax = heightVal; }
-          } else {
-            condMap.set(key, {
-              cells: cells.slice(),
-              qty: rowQty,
-              elevMin:   elevVal   !== null ? elevVal   : null,
-              elevMax:   elevVal   !== null ? elevVal   : null,
-              heightMin: heightVal !== null ? heightVal : null,
-              heightMax: heightVal !== null ? heightVal : null
-            });
-          }
-        });
-        condensedRows = Array.from(condMap.values());
-
-        // ── Build condensed column map ──
-        // Condensed omits: Category; replaces Elevation→Elevation Range, Height→Height Range
-        condensedColMap  = [];
-        condensedHeaders = [];
-        allHeaders.forEach((h, i) => {
-          const hl = h.toLowerCase();
-          if (hl === 'category') return;
-          if (hl === 'elevation') {
-            condensedColMap.push(-1);   // sentinel: -1 = elevation range
-            condensedHeaders.push('Elevation Range');
-          } else if (hl === 'height') {
-            condensedColMap.push(-2);   // sentinel: -2 = height range
-            condensedHeaders.push('Height Range');
-          } else {
-            condensedColMap.push(i);
-            condensedHeaders.push(h);
-          }
-        });
-
-        // ── System metrics ──
-        computeMetrics();
-
-        // ── Render ──
-        renderTable();
-        renderMetrics();
+        // Store raw data, prepare part-number sections, then build output
+        RAW = { rawHeaders, colCount, qtyColIdx, dataRows };
+        prepareSections();
+        renderPnPanel();
+        rebuild();
 
         setStatus(
           `✓ Parsed "${inputFileName}" — ${dataRows.length.toLocaleString()} input rows → ${condensedRows.length} condensed / ${comprehensiveRows.length} comprehensive unique line items`,
@@ -708,6 +930,147 @@
       }
     };
     reader.readAsArrayBuffer(file);
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════
+  //  REBUILD OUTPUT (re-runs whenever part-number selections change)
+  // ═══════════════════════════════════════════════════════════════
+  function rebuild() {
+    if (!RAW) return;
+    // Extend each row with computed Engineering Model / Sales Model / List Price / PN Note
+    const baseHeaders = RAW.rawHeaders;
+    const rawHeaders  = baseHeaders.concat(PN_HEADERS);
+    const colCount    = rawHeaders.length;
+    const qtyColIdx   = RAW.qtyColIdx;
+    const dataRows    = RAW.dataRows
+      .map(row => {
+        const pn = computePartNumber(row);
+        const cat = pn.eng ? catalogFor(pn.eng) : null;
+        const sales = pn.salesOnly || (cat ? cat.sales : (pn.eng ? 'not in catalog' : ''));
+        let price = cat && cat.price ? cat.price : '';
+        let note  = pn.note || '';
+        if (!price && pn.eng) {
+          const gp = generatorPrice(pn.eng);
+          if (gp) { price = gp; note = (note ? note + '; ' : '') + 'Price from generator tables (not in catalog)'; }
+          else    { note = (note ? note + '; ' : '') + 'No price found'; }
+        }
+        return row.slice(0, baseHeaders.length).concat([pn.eng || '', sales, price, note]);
+      });
+        // Find columns that have at least one non-null value in data rows
+    const colHasData = new Array(colCount).fill(false);
+    dataRows.forEach(row => {
+      for (let c = 0; c < colCount; c++) {
+        if (row[c] !== null && row[c] !== undefined && row[c] !== '') colHasData[c] = true;
+      }
+    });
+
+    // Build allHeaders / allColIndexMap: skip col A (0), skip qty col, skip empty cols
+    allColIndexMap = [];
+    allHeaders     = [];
+    for (let c = 0; c < colCount; c++) {
+      if (c === 0) continue;
+      if (c === qtyColIdx) continue;
+      if (!colHasData[c]) continue;
+      allColIndexMap.push(c);
+      allHeaders.push(rawHeaders[c] || `Col ${c + 1}`);
+    }
+
+    // Identify special column indices within allHeaders
+    COL_ELEVATION   = allHeaders.findIndex(h => h.toLowerCase() === 'elevation');
+    COL_HEIGHT      = allHeaders.findIndex(h => h.toLowerCase() === 'height');
+    COL_CATEGORY    = allHeaders.findIndex(h => h.toLowerCase() === 'category');
+    COL_ZONE_LENGTH = allHeaders.findIndex(h => h.toLowerCase() === 'zone length');
+    COL_ZONE_QTY    = allHeaders.findIndex(h => h.toLowerCase() === 'zone qty');
+    COL_ARC_ANGLE   = allHeaders.findIndex(h => h.toLowerCase() === 'arc angle');
+    COL_BF          = allHeaders.findIndex(h => h.toLowerCase() === 'bf');
+    COL_LENGTH      = allHeaders.findIndex(h => h.toLowerCase() === 'length');
+
+    // ── Helper: parse numeric value from a cell string ──
+    function parseCellNum(v) {
+      if (v === null || v === undefined || v === '') return null;
+      const n = parseFloat(String(v).replace(/['"°]/g, '').trim());
+      return isNaN(n) ? null : n;
+    }
+
+    // ── Build COMPREHENSIVE dedup map ──
+    // Key = ALL visible columns (including Height and Elevation)
+    // Items at different heights or elevations remain as separate rows
+    const compMap = new Map();
+    dataRows.forEach(row => {
+      const cells = allColIndexMap.map(c => {
+        const v = row[c];
+        return (v === null || v === undefined) ? '' : String(v).trim();
+      });
+      const key = cells.join('\x00');
+      const rowQty = Number(row[qtyColIdx]) || 1;
+      if (compMap.has(key)) {
+        compMap.get(key).qty += rowQty;
+      } else {
+        compMap.set(key, { cells: cells.slice(), qty: rowQty });
+      }
+    });
+    comprehensiveRows = Array.from(compMap.values());
+
+    // ── Build CONDENSED dedup map ──
+    // Key = all visible columns EXCEPT Height and Elevation
+    // Height and Elevation are tracked as min/max ranges
+    const condMap = new Map();
+    dataRows.forEach(row => {
+      const cells = allColIndexMap.map(c => {
+        const v = row[c];
+        return (v === null || v === undefined) ? '' : String(v).trim();
+      });
+      const keyParts = cells.filter((_, i) => i !== COL_ELEVATION && i !== COL_HEIGHT);
+      const key = keyParts.join('\x00');
+      const rowQty = Number(row[qtyColIdx]) || 1;
+      const elevVal  = COL_ELEVATION >= 0 ? parseCellNum(cells[COL_ELEVATION])  : null;
+      const heightVal = COL_HEIGHT   >= 0 ? parseCellNum(cells[COL_HEIGHT])     : null;
+      if (condMap.has(key)) {
+        const entry = condMap.get(key);
+        entry.qty += rowQty;
+        if (elevVal  !== null) { if (elevVal  < entry.elevMin)   entry.elevMin   = elevVal;   if (elevVal  > entry.elevMax)   entry.elevMax   = elevVal;   }
+        if (heightVal !== null) { if (heightVal < entry.heightMin) entry.heightMin = heightVal; if (heightVal > entry.heightMax) entry.heightMax = heightVal; }
+      } else {
+        condMap.set(key, {
+          cells: cells.slice(),
+          qty: rowQty,
+          elevMin:   elevVal   !== null ? elevVal   : null,
+          elevMax:   elevVal   !== null ? elevVal   : null,
+          heightMin: heightVal !== null ? heightVal : null,
+          heightMax: heightVal !== null ? heightVal : null
+        });
+      }
+    });
+    condensedRows = Array.from(condMap.values());
+
+    // ── Build condensed column map ──
+    // Condensed omits: Category; replaces Elevation→Elevation Range, Height→Height Range
+    condensedColMap  = [];
+    condensedHeaders = [];
+    allHeaders.forEach((h, i) => {
+      const hl = h.toLowerCase();
+      if (hl === 'category') return;
+      if (hl === 'elevation') {
+        condensedColMap.push(-1);   // sentinel: -1 = elevation range
+        condensedHeaders.push('Elevation Range');
+      } else if (hl === 'height') {
+        condensedColMap.push(-2);   // sentinel: -2 = height range
+        condensedHeaders.push('Height Range');
+      } else {
+        condensedColMap.push(i);
+        condensedHeaders.push(h);
+      }
+    });
+
+    // ── System metrics ──
+    computeMetrics();
+
+    // ── Render ──
+    renderTable();
+    renderMetrics();
+
+
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1106,6 +1469,8 @@
     document.getElementById('bom-tbody').innerHTML = '';
     document.getElementById('metrics-row').innerHTML = '';
     document.getElementById('output-panel').style.display = 'none';
+    document.getElementById('pn-panel').style.display = 'none';
+    RAW = null;
     document.getElementById('status-bar').style.display = 'none';
     document.getElementById('file-input').value = '';
     document.getElementById('chk-comprehensive').checked = false;
